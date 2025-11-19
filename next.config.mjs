@@ -8,8 +8,8 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  basePath: isProd && repoName ? repoName : undefined,
-  assetPrefix: isProd && repoName ? repoName : undefined,
+  basePath: isProd ? repoName : undefined,
+  assetPrefix: isProd ? repoName : undefined,
 };
 
 export default nextConfig;
