@@ -85,6 +85,10 @@ jobs:
            NEXT_PUBLIC_REPO_NAME: ${{ vars.NEXT_PUBLIC_REPO_NAME }}
         run: ${{ steps.detect-package-manager.outputs.runner }} next build
 
+      # Verify output directory exists before uploading
+      - name: Verify output directory
+        run: ls -la out
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
@@ -101,4 +105,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
