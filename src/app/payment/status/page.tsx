@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Button } from '@/components/ui/button';
 import { CheckCircle, XCircle, AlertCircle, Home, RefreshCcw } from 'lucide-react';
 import { verifySenangPayHash } from '@/lib/senangpay';
+import { getHref } from '@/lib/utils';
 
 function PaymentStatusContent() {
   const router = useRouter();
@@ -44,7 +45,7 @@ function PaymentStatusContent() {
             setStatus('success');
             // Redirect to thank you page after a short delay
             setTimeout(() => {
-                router.push('/thank-you');
+                router.push(getHref('/thank-you'));
             }, 1500);
           } else {
             setStatus('failed');
@@ -106,7 +107,7 @@ function PaymentStatusContent() {
         <CardFooter className="flex flex-col space-y-3">
           <Button 
               className="w-full" 
-              onClick={() => router.push('/payment')}
+              onClick={() => router.push(getHref('/payment'))}
           >
             <RefreshCcw className="w-4 h-4 mr-2" />
             Try Again
@@ -114,7 +115,7 @@ function PaymentStatusContent() {
           <Button 
               variant="outline" 
               className="w-full"
-              onClick={() => router.push('/')}
+              onClick={() => router.push(getHref('/'))}
           >
             <Home className="w-4 h-4 mr-2" />
             Return to Home

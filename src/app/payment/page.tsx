@@ -9,6 +9,7 @@ import { InsurancePolicy, InsuranceFormData } from '@/types';
 import { ShieldCheck, ArrowLeft, CreditCard, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { SENANGPAY_CONFIG, generateSenangPayHash } from '@/lib/senangpay';
+import { getHref } from '@/lib/utils';
 
 const steps = ['Details', 'Results', 'Payment'];
 
@@ -24,7 +25,7 @@ export default function PaymentPage() {
     const storedFormData = sessionStorage.getItem('insuranceFormData');
     
     if (!storedPolicy || !storedFormData) {
-      router.push('/results');
+      router.push(getHref('/results'));
       return;
     }
 
@@ -32,7 +33,7 @@ export default function PaymentPage() {
       setPolicy(JSON.parse(storedPolicy));
       setFormData(JSON.parse(storedFormData));
     } catch (e) {
-      router.push('/results');
+      router.push(getHref('/results'));
     }
   }, [router]);
 

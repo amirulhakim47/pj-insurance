@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Download, Home } from 'lucide-react';
 import { InsurancePolicy } from '@/types';
+import { getHref } from '@/lib/utils';
 
 export default function ThankYouPage() {
   const router = useRouter();
@@ -72,7 +73,7 @@ export default function ThankYouPage() {
               className="w-full" 
               onClick={() => {
                 sessionStorage.clear();
-                router.push('/');
+                router.push(getHref('/'));
               }}
             >
               <Home className="w-4 h-4 mr-2" />

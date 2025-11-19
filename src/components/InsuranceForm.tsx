@@ -5,6 +5,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { insuranceFormSchema, type InsuranceFormData } from '@/lib/validations';
+import { getHref } from '@/lib/utils';
 import { PageLayout, CenteredLayout, StepIndicator } from '@/components/ui/layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -37,7 +38,7 @@ export default function InsuranceForm() {
       sessionStorage.setItem('insuranceFormData', JSON.stringify(data));
       
       // Navigate to loading page
-      router.push('/loading');
+      router.push(getHref('/loading'));
     } catch (error) {
       console.error('Form submission error:', error);
       setIsSubmitting(false);

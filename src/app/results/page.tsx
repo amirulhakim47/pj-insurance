@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { getPoliciesByVehicleType } from '@/data/mockPolicyData';
 import { InsuranceFormData, InsurancePolicy } from '@/types';
 import { ArrowLeft, CreditCard } from 'lucide-react';
+import { getHref } from '@/lib/utils';
 
 const steps = ['Details', 'Processing', 'Results', 'Payment'];
 
@@ -21,7 +22,7 @@ export default function ResultsPage() {
     // Get form data from sessionStorage
     const storedFormData = sessionStorage.getItem('insuranceFormData');
     if (!storedFormData) {
-      router.push('/');
+      router.push(getHref('/'));
       return;
     }
 
@@ -60,7 +61,7 @@ export default function ResultsPage() {
 
     } catch (error) {
       console.error('Error parsing form data:', error);
-      router.push('/');
+      router.push(getHref('/'));
     }
   }, [router]);
 
@@ -73,11 +74,11 @@ export default function ResultsPage() {
 
   const handlePaymentRedirect = () => {
     if (!selectedPolicy) return;
-    router.push('/payment');
+    router.push(getHref('/payment'));
   };
 
   const handleBackToForm = () => {
-    router.push('/');
+    router.push(getHref('/'));
   };
 
   if (!formData) {

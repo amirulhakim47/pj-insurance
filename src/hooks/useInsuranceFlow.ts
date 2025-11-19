@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { InsuranceFormData, InsurancePolicy, NavigationState } from '@/types';
+import { getHref } from '@/lib/utils';
 
 export function useInsuranceFlow() {
   const router = useRouter();
@@ -82,19 +83,19 @@ export function useInsuranceFlow() {
 
     switch (step) {
       case 'form':
-        router.push('/');
+        router.push(getHref('/'));
         break;
       case 'loading':
-        router.push('/loading');
+        router.push(getHref('/loading'));
         break;
       case 'results':
-        router.push('/results');
+        router.push(getHref('/results'));
         break;
       case 'payment':
-        router.push('/payment');
+        router.push(getHref('/payment'));
         break;
       case 'confirmation':
-        router.push('/thank-you');
+        router.push(getHref('/thank-you'));
         break;
     }
   };
@@ -147,7 +148,7 @@ export function usePageAccess(requiredStep: NavigationState['currentStep']) {
     };
 
     if (!accessRules[requiredStep]) {
-      router.push('/');
+      router.push(getHref('/'));
     }
   }, [requiredStep, router, getStoredFormData, getStoredSelectedPolicy]);
 }

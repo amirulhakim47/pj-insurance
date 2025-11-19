@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { PageLayout, CenteredLayout, StepIndicator } from '@/components/ui/layout';
 import { InsuranceLoading } from '@/components/ui/loading';
 import { loadingMessages } from '@/data/sampleData';
+import { getHref } from '@/lib/utils';
 
 const steps = ['Details', 'Loading', 'Results'];
 
@@ -17,7 +18,7 @@ export default function LoadingPage() {
     // Check if form data exists
     const formData = sessionStorage.getItem('insuranceFormData');
     if (!formData) {
-      router.push('/');
+      router.push(getHref('/'));
       return;
     }
 
@@ -33,7 +34,7 @@ export default function LoadingPage() {
           clearInterval(progressTimer);
           // Navigate to results page after completion
           setTimeout(() => {
-            router.push('/results');
+            router.push(getHref('/results'));
           }, 500);
           return 100;
         }
