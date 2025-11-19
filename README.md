@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Car Insurance Renewal Application
 
-## Getting Started
+A modern, responsive car insurance renewal frontend application built with Next.js 15, React 19, and TypeScript. This application provides a complete user flow for comparing and selecting car insurance policies with a focus on user experience and accessibility.
 
-First, run the development server:
+## 🚀 Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+### Core Functionality
+- **Multi-step Insurance Flow**: Input Form → Loading → Results → WhatsApp Integration
+- **Vehicle Type Support**: Car and Motorcycle insurance options
+- **Form Validation**: Comprehensive validation for Malaysian formats (NRIC, plate numbers, postcodes)
+- **Policy Comparison**: Side-by-side comparison of insurance policies from multiple providers
+- **WhatsApp Integration**: Seamless handoff to WhatsApp for policy completion
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Technical Features
+- **Responsive Design**: Mobile-first approach with Tailwind CSS
+- **Accessibility**: WCAG compliant with screen reader support and keyboard navigation
+- **Performance Optimized**: Code splitting, image optimization, and bundle analysis
+- **Type Safety**: Full TypeScript implementation
+- **Testing**: Comprehensive test suite with Jest and React Testing Library
+- **Modern UI**: Clean, minimalist design with orange/white theme
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🛠️ Tech Stack
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Framework**: Next.js 15.5.4 with App Router
+- **React**: React 19.1.0 with TypeScript
+- **Styling**: Tailwind CSS v4 with custom design system
+- **UI Components**: shadcn/ui component library
+- **Form Handling**: React Hook Form with Zod validation
+- **Icons**: Lucide React
+- **Testing**: Jest, React Testing Library, @testing-library/jest-dom
+- **Performance**: Bundle analyzer, Lighthouse integration
 
-## Learn More
+## 🚦 Getting Started
 
-To learn more about Next.js, take a look at the following resources:
+### Prerequisites
+- Node.js 18+
+- npm or yarn
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Installation
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd pj-insrnce
+   ```
 
-## Deploy on Vercel
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+3. **Run the development server**
+   ```bash
+   npm run dev
+   ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+4. **Open your browser**
+   Navigate to [http://localhost:3000](http://localhost:3000)
+
+### Available Scripts
+
+- `npm run dev` - Start development server with Turbopack
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run lint` - Run Biome linter
+- `npm run format` - Format code with Biome
+- `npm test` - Run test suite
+- `npm run test:watch` - Run tests in watch mode
+- `npm run test:coverage` - Run tests with coverage report
+- `npm run analyze` - Analyze bundle size
+- `npm run lighthouse` - Run Lighthouse performance audit
