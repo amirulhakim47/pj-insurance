@@ -2,10 +2,11 @@
 
 const nextConfig = {
   output: 'export',
+  basePath: '/pj-insurance',
+  assetPrefix: '/pj-insurance',
   images: {
     unoptimized: true,
   },
-  // No basePath needed - gh-pages serves from custom domain or root
 };
 
 export default nextConfig;
