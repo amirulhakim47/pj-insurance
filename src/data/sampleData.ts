@@ -55,6 +55,8 @@ export const generateSampleFormData = (count: number = 10): InsuranceFormData[] 
       nric: sampleNRICs[Math.floor(Math.random() * sampleNRICs.length)],
       plateNumber: samplePlateNumbers[Math.floor(Math.random() * samplePlateNumbers.length)],
       postcode: samplePostcodes[Math.floor(Math.random() * samplePostcodes.length)],
+      phoneNumber: '0123456789', // Default dummy value
+      email: 'test@example.com', // Default dummy value
       customerType: customerTypes[Math.floor(Math.random() * customerTypes.length)],
     });
   }
@@ -71,6 +73,8 @@ export const testScenarios: { name: string; data: InsuranceFormData }[] = [
       nric: '900101-01-1234',
       plateNumber: 'WA1234A',
       postcode: '50450',
+      phoneNumber: '0123456789',
+      email: 'kl_driver@example.com',
       customerType: 'individual',
     },
   },
@@ -81,6 +85,8 @@ export const testScenarios: { name: string; data: InsuranceFormData }[] = [
       nric: '850615-02-5678',
       plateNumber: 'BCA5678',
       postcode: '40150',
+      phoneNumber: '0198765432',
+      email: 'company_fleet@example.com',
       customerType: 'company',
     },
   },
@@ -91,6 +97,8 @@ export const testScenarios: { name: string; data: InsuranceFormData }[] = [
       nric: '920330-03-9012',
       plateNumber: 'PBA9012',
       postcode: '10350',
+      phoneNumber: '0178889999',
+      email: 'penang_driver@example.com',
       customerType: 'individual',
     },
   },
@@ -101,6 +109,8 @@ export const testScenarios: { name: string; data: InsuranceFormData }[] = [
       nric: '880722-04-3456',
       plateNumber: 'JHA3456',
       postcode: '80000',
+      phoneNumber: '0134445555',
+      email: 'johor_biz@example.com',
       customerType: 'company',
     },
   },
