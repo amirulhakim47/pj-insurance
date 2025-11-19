@@ -7,6 +7,7 @@ import { PageLayout, CenteredLayout } from '@/components/ui/layout';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, XCircle, AlertCircle, Home, RefreshCcw } from 'lucide-react';
+import { verifySenangPayHash } from '@/lib/senangpay';
 
 function PaymentStatusContent() {
   const router = useRouter();
@@ -27,24 +28,18 @@ function PaymentStatusContent() {
       return;
     }
 
-    // Verify hash via API
+    // Verify hash client-side (since we are on static hosting with exposed keys)
     const verifyPayment = async () => {
       try {
-        const response = await fetch('/api/payment/verify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            status_id,
-            order_id,
-            transaction_id,
-            msg,
-            hash
-          }),
-        });
+        const isValid = await verifySenangPayHash(
+          status_id,
+          order_id || '',
+          transaction_id || '',
+          msg || '',
+          hash
+        );
 
-        const data = await response.json();
-
-        if (data.isValid) {
+        if (isValid) {
           if (status_id === '1') {
             setStatus('success');
             // Redirect to thank you page after a short delay

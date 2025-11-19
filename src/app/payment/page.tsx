@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { InsurancePolicy, InsuranceFormData } from '@/types';
 import { ShieldCheck, ArrowLeft, CreditCard, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { SENANGPAY_CONFIG, generateSenangPayHash } from '@/lib/senangpay';
 
 const steps = ['Details', 'Results', 'Payment'];
 
@@ -44,46 +45,26 @@ export default function PaymentPage() {
     try {
       // Generate a unique order ID
       const orderId = `ORDER-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      const formattedAmount = (policy.finalPrice * 1.06 + 10).toFixed(2);
+      const detail = `Insurance_${policy.provider.name.replace(/\s+/g, '_')}_${policy.id}`;
       
-      // Prepare payment details
-      const paymentDetails = {
-        detail: `Insurance_${policy.provider.name.replace(/\s+/g, '_')}_${policy.id}`,
-        amount: (policy.finalPrice * 1.06 + 10).toFixed(2), // Total with tax and stamp duty
-        orderId: orderId,
-        name: "Customer", // We don't ask for name in the form, using default or could be added
-        email: formData.email,
-        phone: formData.phoneNumber,
-      };
-
-      // Call API to get hash and parameters
-      const response = await fetch('/api/payment/initiate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(paymentDetails),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to initiate payment');
-      }
-
-      const data = await response.json();
+      // Prepare hash (client-side generation)
+      const hash = await generateSenangPayHash(detail, formattedAmount, orderId);
 
       // Create a form and submit it to SenangPay
       const form = document.createElement('form');
       form.method = 'POST';
-      form.action = data.url;
+      form.action = SENANGPAY_CONFIG.url;
 
       // Add fields
       const fields = {
-        detail: data.detail,
-        amount: data.amount,
-        order_id: data.orderId,
-        hash: data.hash,
-        name: data.name,
-        email: data.email,
-        phone: data.phone,
+        detail: detail,
+        amount: formattedAmount,
+        order_id: orderId,
+        hash: hash,
+        name: "Customer", // Default or from form if available
+        email: formData.email,
+        phone: formData.phoneNumber,
       };
 
       Object.entries(fields).forEach(([key, value]) => {
@@ -101,7 +82,7 @@ export default function PaymentPage() {
 
     } catch (err) {
       console.error('Payment error:', err);
-      setError('Failed to connect to payment gateway. Please try again.');
+      setError('Failed to process payment request. Please try again.');
       setIsProcessing(false);
     }
   };
@@ -200,7 +181,7 @@ export default function PaymentPage() {
                         <span className="font-medium text-foreground">Payer Email:</span> {formData.email}
                     </div>
                     <div className="text-sm text-muted-foreground">
-                         <span className="font-medium text-foreground">Payer Phone:</span> {formData.phoneNumber}
+                        <span className="font-medium text-foreground">Payer Phone:</span> {formData.phoneNumber}
                     </div>
                 </div>
 
