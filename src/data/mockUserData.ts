@@ -7,6 +7,8 @@ export const sampleFormData: InsuranceFormData[] = [
     nric: '123456-12-1234',
     plateNumber: 'ABC1234',
     postcode: '50450',
+    phoneNumber: '0123456789',
+    email: 'test@example.com',
     customerType: 'individual' as CustomerType,
   },
   {
@@ -14,6 +16,8 @@ export const sampleFormData: InsuranceFormData[] = [
     nric: '987654-32-5678',
     plateNumber: 'XYZ9876',
     postcode: '10350',
+    phoneNumber: '0198765432',
+    email: 'motor@example.com',
     customerType: 'individual' as CustomerType,
   },
   {
@@ -21,6 +25,8 @@ export const sampleFormData: InsuranceFormData[] = [
     nric: '456789-01-2345',
     plateNumber: 'DEF5678',
     postcode: '40150',
+    phoneNumber: '01122334455',
+    email: 'company@example.com',
     customerType: 'company' as CustomerType,
   },
 ];
@@ -31,6 +37,8 @@ export const defaultFormValues: Partial<InsuranceFormData> = {
   nric: '',
   plateNumber: '',
   postcode: '',
+  phoneNumber: '',
+  email: '',
   customerType: undefined,
 };
 
