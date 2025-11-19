@@ -84,6 +84,16 @@ jobs:
            # Value: /your-repo-name
            NEXT_PUBLIC_REPO_NAME: ${{ vars.NEXT_PUBLIC_REPO_NAME }}
         run: ${{ steps.detect-package-manager.outputs.runner }} next build
+        
+      # If the output directory is not created, list the current directory to debug
+      - name: Debug directory structure
+        if: failure() || success()
+        run: |
+          ls -la
+          if [ -d ".next" ]; then
+             echo ".next directory exists:"
+             ls -la .next
+          fi
 
       # Verify output directory exists before uploading
       - name: Verify output directory
