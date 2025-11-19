@@ -2,11 +2,11 @@
 
 const nextConfig = {
   output: 'export',
+  basePath: '/pj-insurance',
+  assetPrefix: '/pj-insurance',
   images: {
     unoptimized: true,
   },
-  // No basePath needed for gh-pages deployment
-  // GitHub Pages automatically serves from /repo-name/
 };
 
 export default nextConfig;
