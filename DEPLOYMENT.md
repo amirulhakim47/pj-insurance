@@ -1,54 +1,38 @@
 # Deployment Guide
 
-This project is configured for deployment to **GitHub Pages** with support for subdirectory hosting (e.g., `username.github.io/repo-name`).
+This project is configured for deployment to **GitHub Pages** using a manual build process.
 
-## 1. Configure Repository Name (Important!)
+## Setup (One Time)
 
-If your repository is NOT at the root (e.g., it is `https://username.github.io/my-project`), you MUST configure the `NEXT_PUBLIC_REPO_NAME` variable.
+1. Go to your GitHub Repository Settings.
+2. Navigate to **Pages** (on the left sidebar).
+3. Under **Build and deployment** > **Source**, select **"Deploy from a branch"**.
+4. Select **Branch: main** and **Folder: /out** (or `/root` if `/out` isn't an option, but usually it tracks the root. If `/out` option isn't there, you might need to just serve from root but our build puts it in `out`. GitHub Pages classic usually serves from root or `/docs`. If we want to serve `out`, we might need to use a specific action or just copy contents to root on a `gh-pages` branch. 
+   *Actually, the easiest way for manual deployment to GitHub Pages is to use the `gh-pages` package or push the `out` folder content to a separate `gh-pages` branch.*)
 
-### Option A: GitHub Repository Variable (Recommended)
-1. Go to your GitHub Repository.
-2. Navigate to **Settings** > **Secrets and variables** > **Actions**.
-3. Click on the **Variables** tab.
-4. Click **New repository variable**.
-5. Name: `NEXT_PUBLIC_REPO_NAME`
-6. Value: `/your-repo-name` (Must start with a slash, e.g., `/pj-insrnce`).
+**Wait**, standard GitHub Pages "Deploy from branch" only supports `/` (root) or `/docs`. It does **not** support arbitrary folders like `/out` on the main branch.
 
-### Option B: Environment File (Alternative)
-You can create a `.env.production` file in the root of your project:
+### Revised Strategy:
 
-```env
-NEXT_PUBLIC_REPO_NAME=/your-repo-name
+We will use the `gh-pages` branch strategy.
+
+1. **Install `gh-pages`**: `npm install --save-dev gh-pages` (I will do this for you).
+2. **Update `deploy` script**: `"deploy": "next build && gh-pages -d out -t"` (-t checks for dotfiles).
+3. **Run**: `npm run deploy`.
+
+This will push the contents of `out/` to a `gh-pages` branch. GitHub Pages will then serve from that branch.
+
+## Usage
+
+To deploy your latest changes:
+
+```bash
+npm run deploy
 ```
 
-## 2. GitHub Actions
+This command will:
+1. Build the project locally (generating `out/`).
+2. Push the `out/` folder to the `gh-pages` branch on GitHub.
+3. Your site will update automatically.
 
-A GitHub Actions workflow has been created at `.github/workflows/nextjs.yml`.
-
-1. Push your code to the `main` branch.
-2. The action will automatically trigger.
-3. Once finished, go to **Settings** > **Pages**.
-4. Ensure the **Source** is set to `GitHub Actions`.
-5. Your site should be live!
-
-## 3. Local Development
-
-In local development (`npm run dev`), the base path is ignored, so everything works as expected at `localhost:3000`.
-
-## Troubleshooting
-
-### Images Not Loading
-If images are broken on the deployed site:
-1. Check that `NEXT_PUBLIC_REPO_NAME` is set correctly in GitHub Variables.
-2. Inspect the image URL in the browser. It should look like `/repo-name/logos/image.svg`.
-3. If it looks like `/logos/image.svg` (missing repo name), the variable is missing.
-
-### 404 on Refresh
-GitHub Pages is a static host. If you navigate to `/quote` and refresh, you might get a 404 because that file doesn't exist (it's a client-side route).
-*   Next.js `output: 'export'` generates `quote.html`.
-*   Navigation works because of client-side routing.
-*   Direct access to `/quote` might fail unless you configure a trailing slash or use a rewrite hack (SPA fallback).
-*   This project uses `output: 'export'` which generates `out/quote.html`. GitHub Pages usually handles `quote` -> `quote.html` automatically.
-
-## Performance
-The `PerformanceMonitor` component is disabled in production builds to prevent console noise and overhead.
+*Note: You still need to push your source code changes to `main` separately using standard git commands.*
