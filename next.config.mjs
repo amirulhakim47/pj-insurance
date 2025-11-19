@@ -1,15 +1,12 @@
 /** @type {import('next').NextConfig} */
 
-const isProd = process.env.NODE_ENV === 'production';
-const repoName = process.env.NEXT_PUBLIC_REPO_NAME || '/pj-insurance';
-
 const nextConfig = {
   output: 'export',
   images: {
     unoptimized: true,
   },
-  basePath: isProd ? repoName : undefined,
-  assetPrefix: isProd ? repoName : undefined,
+  // No basePath needed for gh-pages deployment
+  // GitHub Pages automatically serves from /repo-name/
 };
 
 export default nextConfig;
