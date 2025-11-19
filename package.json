@@ -14,7 +14,7 @@
     "test:ci": "jest --ci --coverage --watchAll=false",
     "analyze": "ANALYZE=true npm run build",
     "lighthouse": "lighthouse http://localhost:3000 --output=html --output-path=./lighthouse-report.html",
-    "deploy": "rm -rf out && next build && node scripts/fix-paths.mjs && mkdir -p out/_next && cp -R .next/server/app/* out/ && cp -R .next/static out/_next/static && cp -R public/* out/ && touch out/.nojekyll && gh-pages -d out -t --dotfiles --remove '**/*'"
+    "deploy": "rm -rf out && next build && mkdir -p out/_next && cp -R .next/server/app/* out/ && cp -R .next/static out/_next/static && cp -R public/* out/ && echo 'amirulhakim47.github.io' > out/CNAME && touch out/.nojekyll && gh-pages -d out -t --dotfiles --remove '**/*'"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
