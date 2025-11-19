@@ -17,16 +17,17 @@ function fixHtmlPaths(dir) {
       let content = readFileSync(fullPath, 'utf8');
       
       // Fix all asset paths - be very specific to avoid double-prefixing
-      content = content.replace(/href="\/_next\//g, `href="${basePath}/_next/`);
-      content = content.replace(/src="\/_next\//g, `src="${basePath}/_next/`);
-      content = content.replace(/href="\/favicon/g, `href="${basePath}/favicon`);
-      content = content.replace(/href="\/quote"/g, `href="${basePath}/quote"`);
-      content = content.replace(/href="\/payment/g, `href="${basePath}/payment`);
-      content = content.replace(/href="\/results"/g, `href="${basePath}/results"`);
-      content = content.replace(/href="\/thank-you"/g, `href="${basePath}/thank-you"`);
-      content = content.replace(/href="\/loading"/g, `href="${basePath}/loading"`);
-      // Fix home link
-      content = content.replace(/href="\/">/g, `href="${basePath}/">`);
+      // Only replace if it doesn't already have the basePath
+      content = content.replace(/href="(?!\/pj-insurance)\/_next\//g, `href="${basePath}/_next/`);
+      content = content.replace(/src="(?!\/pj-insurance)\/_next\//g, `src="${basePath}/_next/`);
+      content = content.replace(/href="(?!\/pj-insurance)\/favicon/g, `href="${basePath}/favicon`);
+      
+      // Fix all internal page links - match any href that starts with / but not // or /pj-insurance
+      content = content.replace(/href="\/(?!\/|pj-insurance)([^"]*?)"/g, `href="${basePath}/$1"`);
+      
+      // Fix any remaining specific paths in inline scripts
+      content = content.replace(/"p":"\/"/g, `"p":"${basePath}"`);
+      content = content.replace(/"p":"\/(?!pj-insurance)/g, `"p":"${basePath}/`);
       
       writeFileSync(fullPath, content, 'utf8');
       console.log(`✓ Fixed: ${fullPath}`);

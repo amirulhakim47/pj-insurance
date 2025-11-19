@@ -29,3 +29,35 @@ export function prefixPath(path: string): string {
   
   return `${basePath}${cleanPath}`;
 }
+
+/**
+ * Gets the base path for the application based on environment.
+ * For GitHub Pages, this returns '/pj-insurance' in production.
+ * 
+ * @returns The base path string
+ */
+export function getBasePath(): string {
+  // In production on GitHub Pages, we need the base path
+  if (typeof window !== 'undefined') {
+    // Client-side: use the actual pathname base
+    const pathname = window.location.pathname;
+    if (pathname.startsWith('/pj-insurance')) {
+      return '/pj-insurance';
+    }
+  }
+  // Server-side or local dev
+  return process.env.NODE_ENV === 'production' ? '/pj-insurance' : '';
+}
+
+/**
+ * Gets the full href for Next.js Link components with proper base path.
+ * Use this for all internal navigation links.
+ * 
+ * @param path The path to navigate to (e.g., '/quote')
+ * @returns The full href with base path (e.g., '/pj-insurance/quote')
+ */
+export function getHref(path: string): string {
+  const basePath = getBasePath();
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return basePath ? `${basePath}${cleanPath}` : cleanPath;
+}
