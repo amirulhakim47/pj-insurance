@@ -121,9 +121,9 @@ export default function LandingPage() {
          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/5 rounded-full blur-3xl -z-10" />
 
         <Grid cols={{ default: 1, md: 3 }} gap={6}>
-          <Card className="border-none shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 bg-card">
+          <Card className="border-none shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 bg-card group">
             <CardHeader>
-              <div className="w-14 h-14 bg-orange-100 dark:bg-orange-900/30 rounded-2xl flex items-center justify-center mb-4 rotate-3 group-hover:rotate-6 transition-transform">
+              <div className="w-14 h-14 bg-orange-100 dark:bg-orange-900/30 rounded-2xl flex items-center justify-center mb-4 rotate-3 group-hover:rotate-6 transition-transform duration-300">
                 <Zap className="w-7 h-7 text-primary" />
               </div>
               <CardTitle className="text-xl">Lightning Fast Quotes</CardTitle>
@@ -135,9 +135,9 @@ export default function LandingPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 bg-card">
+          <Card className="border-none shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 bg-card group">
             <CardHeader>
-              <div className="w-14 h-14 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mb-4 -rotate-3 group-hover:-rotate-6 transition-transform">
+              <div className="w-14 h-14 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mb-4 -rotate-3 group-hover:-rotate-6 transition-transform duration-300">
                 <Shield className="w-7 h-7 text-blue-600" />
               </div>
               <CardTitle className="text-xl">Secure & Reliable</CardTitle>
@@ -149,9 +149,9 @@ export default function LandingPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 bg-card">
+          <Card className="border-none shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 bg-card group">
             <CardHeader>
-              <div className="w-14 h-14 bg-red-100 dark:bg-red-900/30 rounded-2xl flex items-center justify-center mb-4 rotate-3 group-hover:rotate-6 transition-transform">
+              <div className="w-14 h-14 bg-red-100 dark:bg-red-900/30 rounded-2xl flex items-center justify-center mb-4 rotate-3 group-hover:rotate-6 transition-transform duration-300">
                 <Heart className="w-7 h-7 text-red-600" />
               </div>
               <CardTitle className="text-xl">Best Price Guarantee</CardTitle>
@@ -186,7 +186,7 @@ export default function LandingPage() {
             <div className="hidden md:block absolute top-16 left-[15%] right-[15%] h-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent -z-10 border-t-2 border-dashed border-primary/30" />
             
             <Grid cols={{ default: 1, md: 3 }} gap={8}>
-              <div className="relative flex flex-col items-center text-center space-y-6 group">
+              <div className="relative flex flex-col items-center text-center space-y-6 group cursor-default">
                 <div className="relative">
                     <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl group-hover:blur-2xl transition-all opacity-50" />
                     <div className="w-32 h-32 bg-background rounded-full flex items-center justify-center border-4 border-muted group-hover:border-primary transition-colors shadow-sm relative z-10">
@@ -195,14 +195,14 @@ export default function LandingPage() {
                     </div>
                 </div>
                 <div className="space-y-2 max-w-xs">
-                  <h3 className="text-xl font-bold">Enter Details</h3>
+                  <h3 className="text-xl font-bold group-hover:text-primary transition-colors">Enter Details</h3>
                   <p className="text-muted-foreground">
                     Fill in your vehicle registration number and personal details.
                   </p>
                 </div>
               </div>
 
-              <div className="relative flex flex-col items-center text-center space-y-6 group">
+              <div className="relative flex flex-col items-center text-center space-y-6 group cursor-default">
                  <div className="relative">
                     <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl group-hover:blur-2xl transition-all opacity-50" />
                     <div className="w-32 h-32 bg-background rounded-full flex items-center justify-center border-4 border-muted group-hover:border-primary transition-colors shadow-sm relative z-10">
@@ -211,14 +211,14 @@ export default function LandingPage() {
                     </div>
                 </div>
                 <div className="space-y-2 max-w-xs">
-                  <h3 className="text-xl font-bold">Compare Quotes</h3>
+                  <h3 className="text-xl font-bold group-hover:text-primary transition-colors">Compare Quotes</h3>
                   <p className="text-muted-foreground">
                     Instantly see quotes from Allianz, Etiqa, Liberty, and more.
                   </p>
                 </div>
               </div>
 
-              <div className="relative flex flex-col items-center text-center space-y-6 group">
+              <div className="relative flex flex-col items-center text-center space-y-6 group cursor-default">
                  <div className="relative">
                     <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl group-hover:blur-2xl transition-all opacity-50" />
                     <div className="w-32 h-32 bg-background rounded-full flex items-center justify-center border-4 border-muted group-hover:border-primary transition-colors shadow-sm relative z-10">
@@ -227,7 +227,7 @@ export default function LandingPage() {
                     </div>
                 </div>
                 <div className="space-y-2 max-w-xs">
-                  <h3 className="text-xl font-bold">Pay & Insure</h3>
+                  <h3 className="text-xl font-bold group-hover:text-primary transition-colors">Pay & Insure</h3>
                   <p className="text-muted-foreground">
                     Secure checkout and receive your policy instantly via email.
                   </p>
