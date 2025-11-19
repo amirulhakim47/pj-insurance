@@ -115,10 +115,10 @@ export default function PaymentPage() {
       <CenteredLayout maxWidth="max-w-4xl">
         <StepIndicator steps={steps} currentStep={2} />
 
-        <div className="grid md:grid-cols-2 gap-8">
+        <div className="grid md:grid-cols-2 gap-8 items-stretch">
           {/* Payment Summary */}
-          <div className="space-y-6 md:order-2">
-             <Card className="bg-muted/30">
+          <div className="space-y-6 md:order-2 flex flex-col">
+             <Card className="bg-muted/30 h-full">
               <CardHeader>
                 <CardTitle>Order Summary</CardTitle>
               </CardHeader>
@@ -165,15 +165,15 @@ export default function PaymentPage() {
           </div>
 
           {/* Payment Action */}
-          <div className="space-y-6 md:order-1">
-            <Card className="h-full">
+          <div className="space-y-6 md:order-1 flex flex-col">
+            <Card className="h-full flex flex-col">
               <CardHeader>
                 <CardTitle>Secure Payment</CardTitle>
                 <CardDescription>
                   You will be redirected to SenangPay secure payment gateway to complete your purchase.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-6 flex-grow">
                 {error && (
                   <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
@@ -205,7 +205,7 @@ export default function PaymentPage() {
                 </div>
 
               </CardContent>
-              <CardFooter className="flex-col space-y-4">
+              <CardFooter className="flex-col space-y-4 mt-auto">
                  <Button 
                     onClick={handlePayment}
                     className="w-full h-12 text-lg bg-[#38b2ac] hover:bg-[#319795]" // Teal color like SenangPay branding potentially
