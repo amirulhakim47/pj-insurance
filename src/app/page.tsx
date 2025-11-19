@@ -37,7 +37,7 @@ export default function LandingPage() {
             <h1 className="text-4xl md:text-7xl font-bold tracking-tight text-foreground leading-tight animate-in fade-in slide-in-from-bottom-6 duration-700 delay-100">
               Car Insurance Renewal, <br />
               <span className="text-primary relative inline-block">
-                 Made Simple
+                 Made Simple!
                  <svg className="absolute w-full h-3 -bottom-1 left-0 text-orange-200 -z-10" viewBox="0 0 100 10" preserveAspectRatio="none">
                     <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="8" fill="none" />
                  </svg>
