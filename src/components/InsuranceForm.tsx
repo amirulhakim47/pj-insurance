@@ -38,7 +38,7 @@ export default function InsuranceForm() {
       sessionStorage.setItem('insuranceFormData', JSON.stringify(data));
       
       // Navigate to loading page
-      router.push(getHref('/loading'));
+      router.push('/loading');
     } catch (error) {
       console.error('Form submission error:', error);
       setIsSubmitting(false);

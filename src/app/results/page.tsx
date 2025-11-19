@@ -22,7 +22,7 @@ export default function ResultsPage() {
     // Get form data from sessionStorage
     const storedFormData = sessionStorage.getItem('insuranceFormData');
     if (!storedFormData) {
-      router.push(getHref('/'));
+      router.push('/');
       return;
     }
 
@@ -61,7 +61,7 @@ export default function ResultsPage() {
 
     } catch (error) {
       console.error('Error parsing form data:', error);
-      router.push(getHref('/'));
+      router.push('/');
     }
   }, [router]);
 
@@ -74,11 +74,11 @@ export default function ResultsPage() {
 
   const handlePaymentRedirect = () => {
     if (!selectedPolicy) return;
-    router.push(getHref('/payment'));
+    router.push('/payment');
   };
 
   const handleBackToForm = () => {
-    router.push(getHref('/'));
+    router.push('/');
   };
 
   if (!formData) {

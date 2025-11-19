@@ -83,19 +83,19 @@ export function useInsuranceFlow() {
 
     switch (step) {
       case 'form':
-        router.push(getHref('/'));
+        router.push('/');
         break;
       case 'loading':
-        router.push(getHref('/loading'));
+        router.push('/loading');
         break;
       case 'results':
-        router.push(getHref('/results'));
+        router.push('/results');
         break;
       case 'payment':
-        router.push(getHref('/payment'));
+        router.push('/payment');
         break;
       case 'confirmation':
-        router.push(getHref('/thank-you'));
+        router.push('/thank-you');
         break;
     }
   };
@@ -148,7 +148,7 @@ export function usePageAccess(requiredStep: NavigationState['currentStep']) {
     };
 
     if (!accessRules[requiredStep]) {
-      router.push(getHref('/'));
+      router.push('/');
     }
   }, [requiredStep, router, getStoredFormData, getStoredSelectedPolicy]);
 }

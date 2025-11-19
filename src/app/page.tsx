@@ -51,7 +51,7 @@ export default function LandingPage() {
             
             <div className="flex flex-col sm:flex-row gap-4 w-full justify-center animate-in fade-in slide-in-from-bottom-10 duration-700 delay-300">
               <Button asChild size="lg" className="text-lg px-8 h-14 shadow-xl shadow-primary/20 hover:shadow-primary/30 transition-all hover:-translate-y-1">
-                <Link href={getHref('/quote')}>
+                <Link href="/quote">
                   Get Instant Quote <ArrowRight className="ml-2 w-5 h-5" />
                 </Link>
               </Button>
@@ -291,7 +291,7 @@ export default function LandingPage() {
               Join thousands of satisfied customers and drive with peace of mind today.
             </p>
             <Button asChild size="lg" variant="secondary" className="text-lg px-8 h-14 text-primary hover:text-primary shadow-2xl hover:shadow-white/20 transition-all hover:-translate-y-1">
-              <Link href={getHref('/quote')}>
+              <Link href="/quote">
                 Get Your Free Quote Now
               </Link>
             </Button>

@@ -47,7 +47,7 @@ export function PageLayout({
           <Container>
             <div className="flex items-center justify-between h-16">
               {headerContent || (
-                <Link href={getHref('/')} className="flex items-center space-x-2 transition-opacity hover:opacity-80">
+                <Link href="/" className="flex items-center space-x-2 transition-opacity hover:opacity-80">
                   <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                     <span className="text-primary-foreground font-bold text-sm">M</span>
                   </div>

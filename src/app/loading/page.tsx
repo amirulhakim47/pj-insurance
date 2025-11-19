@@ -18,7 +18,7 @@ export default function LoadingPage() {
     // Check if form data exists
     const formData = sessionStorage.getItem('insuranceFormData');
     if (!formData) {
-      router.push(getHref('/'));
+      router.push('/');
       return;
     }
 
@@ -34,7 +34,7 @@ export default function LoadingPage() {
           clearInterval(progressTimer);
           // Navigate to results page after completion
           setTimeout(() => {
-            router.push(getHref('/results'));
+            router.push('/results');
           }, 500);
           return 100;
         }

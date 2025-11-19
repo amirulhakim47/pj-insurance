@@ -73,7 +73,7 @@ export default function ThankYouPage() {
               className="w-full" 
               onClick={() => {
                 sessionStorage.clear();
-                router.push(getHref('/'));
+                router.push('/');
               }}
             >
               <Home className="w-4 h-4 mr-2" />

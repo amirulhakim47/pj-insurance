@@ -25,7 +25,7 @@ export default function PaymentPage() {
     const storedFormData = sessionStorage.getItem('insuranceFormData');
     
     if (!storedPolicy || !storedFormData) {
-      router.push(getHref('/results'));
+      router.push('/results');
       return;
     }
 
@@ -33,7 +33,7 @@ export default function PaymentPage() {
       setPolicy(JSON.parse(storedPolicy));
       setFormData(JSON.parse(storedFormData));
     } catch (e) {
-      router.push(getHref('/results'));
+      router.push('/results');
     }
   }, [router]);
 
