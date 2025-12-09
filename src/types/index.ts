@@ -4,16 +4,10 @@ export type VehicleType = 'car' | 'motorcycle';
 // Customer Types
 export type CustomerType = 'individual' | 'company';
 
-// Form Input Interface
-export interface InsuranceFormData {
-  vehicleType: VehicleType;
-  nric: string;
-  plateNumber: string;
-  postcode: string;
-  phoneNumber: string;
-  email: string;
-  customerType: CustomerType;
-}
+// Form Input Interface - Use the type from validations.ts instead
+// This is kept for backward compatibility but the actual type is inferred from insuranceFormSchema
+import type { InsuranceFormData } from '@/lib/validations';
+export type { InsuranceFormData };
 
 // Insurance Provider Interface
 export interface InsuranceProvider {
@@ -47,6 +41,7 @@ export interface InsurancePolicy {
 
 // Form Validation Errors
 export interface FormErrors {
+  fullName?: string;
   vehicleType?: string;
   nric?: string;
   plateNumber?: string;
@@ -54,6 +49,9 @@ export interface FormErrors {
   phoneNumber?: string;
   email?: string;
   customerType?: string;
+  isEhailing?: string;
+  isElectricVehicle?: string;
+  pdpaConsent?: string;
 }
 
 // API Response Types

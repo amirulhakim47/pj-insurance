@@ -6,7 +6,8 @@ import { PageLayout, Section, Container, Grid } from '@/components/ui/layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Shield, Zap, Clock, CheckCircle, ArrowRight, Star, Users, Car, Heart } from 'lucide-react';
+import { Shield, Zap, Clock, CheckCircle, ArrowRight, Star, Users, Car, Heart, Lock } from 'lucide-react';
+import { DataProtectionCard } from '@/components/ui/data-protection-card';
 import { prefixPath, getHref } from '@/lib/utils';
 
 export default function LandingPage() {
@@ -238,6 +239,22 @@ export default function LandingPage() {
         </Container>
       </div>
 
+      {/* Data Protection Section */}
+      <Section title="Your Data is Protected" subtitle="We take your privacy and data security seriously." className="relative bg-muted/30">
+        <div className="max-w-3xl mx-auto">
+          <DataProtectionCard />
+          <div className="mt-6 text-center">
+            <Link
+              href="/pdpa-policy"
+              className="text-primary hover:underline font-medium text-sm inline-flex items-center gap-1"
+            >
+              Read our full PDPA policy
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+        </div>
+      </Section>
+
       {/* Testimonials (Optional but adds credibility) */}
       <Section title="What People Say" subtitle="Trusted by thousands of Malaysian drivers." className="relative">
          <div className="absolute right-0 bottom-0 opacity-5 pointer-events-none">
@@ -295,9 +312,14 @@ export default function LandingPage() {
                 Get Your Free Quote Now
               </Link>
             </Button>
-            <p className="text-sm opacity-80 flex items-center gap-2">
-              <Shield className="w-4 h-4" /> No credit card required for quotes. Takes less than 2 minutes.
-            </p>
+            <div className="space-y-2 text-sm opacity-80">
+              <p className="flex items-center justify-center gap-2">
+                <Shield className="w-4 h-4" /> No credit card required for quotes. Takes less than 2 minutes.
+              </p>
+              <p className="flex items-center justify-center gap-2">
+                <Lock className="w-4 h-4" /> PDPA compliant. Your data is secure and protected.
+              </p>
+            </div>
           </div>
         </Container>
       </section>

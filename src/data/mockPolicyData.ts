@@ -20,6 +20,12 @@ export const insuranceProviders: InsuranceProvider[] = [
     logo: '/logos/liberty-logo.svg',
     trustScore: 8.8,
   },
+  {
+    id: 'takaful-ikhlas',
+    name: 'Takaful Ikhlas',
+    logo: '/logos/takaful-ikhlas-logo.svg',
+    trustScore: 9.0,
+  },
 ];
 
 // Generate dates for policies (1 year coverage)
@@ -131,6 +137,57 @@ export const carInsurancePolicies: InsurancePolicy[] = [
       windscreen: false,
     },
   },
+  {
+    id: 'takaful-ikhlas-comprehensive-car',
+    provider: insuranceProviders[3], // Takaful Ikhlas
+    startDate: getStartDate(),
+    expiryDate: getExpiryDate(),
+    description: 'Shariah-compliant comprehensive takaful coverage with ethical protection.',
+    features: [
+      'Shariah-compliant takaful',
+      'Comprehensive coverage',
+      '24/7 Roadside assistance',
+      'Windscreen protection',
+      'Flood coverage',
+      'Theft protection',
+      'Halal investment returns',
+    ],
+    originalPrice: 1950,
+    discountPercentage: 12,
+    finalPrice: 1716,
+    coverage: {
+      liability: 'Unlimited',
+      comprehensive: true,
+      theft: true,
+      flood: true,
+      windscreen: true,
+    },
+  },
+  {
+    id: 'takaful-ikhlas-premium-car',
+    provider: insuranceProviders[3], // Takaful Ikhlas
+    startDate: getStartDate(),
+    expiryDate: getExpiryDate(),
+    description: 'Premium takaful plan with enhanced benefits and surplus distribution.',
+    features: [
+      'Premium takaful coverage',
+      'Surplus distribution',
+      'Personal accident coverage',
+      'Rental car coverage',
+      'Global assistance',
+      'Halal investment',
+    ],
+    originalPrice: 2200,
+    discountPercentage: 8,
+    finalPrice: 2024,
+    coverage: {
+      liability: 'Unlimited',
+      comprehensive: true,
+      theft: true,
+      flood: true,
+      windscreen: true,
+    },
+  },
 ];
 
 // Mock Insurance Policies for Motorcycles
@@ -203,6 +260,32 @@ export const motorcycleInsurancePolicies: InsurancePolicy[] = [
       comprehensive: false,
       theft: true,
       flood: false,
+      windscreen: false,
+    },
+  },
+  {
+    id: 'takaful-ikhlas-motorcycle-comprehensive',
+    provider: insuranceProviders[3], // Takaful Ikhlas
+    startDate: getStartDate(),
+    expiryDate: getExpiryDate(),
+    description: 'Shariah-compliant comprehensive motorcycle takaful with rider protection.',
+    features: [
+      'Shariah-compliant takaful',
+      'Comprehensive coverage',
+      'Personal accident coverage',
+      'Theft protection',
+      'Roadside assistance',
+      'Helmet coverage',
+      'Halal investment',
+    ],
+    originalPrice: 680,
+    discountPercentage: 10,
+    finalPrice: 612,
+    coverage: {
+      liability: 'RM1,000,000',
+      comprehensive: true,
+      theft: true,
+      flood: true,
       windscreen: false,
     },
   },

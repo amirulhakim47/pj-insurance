@@ -1,8 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import Image from 'next/image';
-import { cn, prefixPath } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { InsurancePolicy } from '@/types';
@@ -75,33 +74,13 @@ export function PolicyCard({ policy, isSelected, onSelect, className }: PolicyCa
 
       <CardHeader className="pb-4">
         <div className="flex items-start justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-muted flex items-center justify-center">
-              <Image
-                src={prefixPath(policy.provider.logo)}
-                alt={`${policy.provider.name} logo`}
-                width={48}
-                height={48}
-                className="object-contain"
-                onError={(e) => {
-                  // Fallback to text if image fails to load
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                  const parent = target.parentElement;
-                  if (parent) {
-                    parent.innerHTML = `<span class="text-xs font-bold text-muted-foreground">${policy.provider.name.charAt(0)}</span>`;
-                  }
-                }}
-              />
-            </div>
-            <div>
-              <CardTitle className="text-lg font-bold text-foreground">
-                {policy.provider.name}
-              </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Trust Score: {policy.provider.trustScore}/10
-              </p>
-            </div>
+          <div>
+            <CardTitle className="text-lg font-bold text-foreground">
+              Takaful Plan
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Shariah-compliant coverage
+            </p>
           </div>
           
           {policy.discountPercentage && (

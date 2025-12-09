@@ -30,13 +30,18 @@ export default function ResultsPage() {
       const parsedFormData: InsuranceFormData = JSON.parse(storedFormData);
       setFormData(parsedFormData);
       
-      // Get policies based on vehicle type
+      // Get policies based on vehicle type and filter to only Takaful Ikhlas
       const allPolicies = getPoliciesByVehicleType(parsedFormData.vehicleType);
+      
+      // Filter to only show Takaful Ikhlas policies
+      const takafulPolicies = allPolicies.filter(
+        (policy) => policy.provider.id === 'takaful-ikhlas'
+      );
       
       // Initialize policies with loading state logic
       // First policy is ready immediately (or very quickly)
       // Others are loading
-      const initialPolicies = allPolicies.map((policy, index) => ({
+      const initialPolicies = takafulPolicies.map((policy, index) => ({
         ...policy,
         loading: index > 0 // First one is ready, others wait
       }));
@@ -176,7 +181,7 @@ export default function ResultsPage() {
           {selectedPolicy && (
             <div className="text-center text-sm text-muted-foreground max-w-md mx-auto">
               <p>
-                You've selected <strong>{selectedPolicy.provider.name}</strong> for{' '}
+                You've selected a Takaful plan for{' '}
                 <strong>RM{selectedPolicy.finalPrice.toFixed(2)}</strong>. 
                 Click "Proceed to Payment" to complete your purchase.
               </p>

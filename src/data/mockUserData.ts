@@ -3,6 +3,7 @@ import { InsuranceFormData, VehicleType, CustomerType } from '@/types';
 // Sample form data for testing
 export const sampleFormData: InsuranceFormData[] = [
   {
+    fullName: 'John Doe',
     vehicleType: 'car' as VehicleType,
     nric: '123456-12-1234',
     plateNumber: 'ABC1234',
@@ -10,8 +11,12 @@ export const sampleFormData: InsuranceFormData[] = [
     phoneNumber: '0123456789',
     email: 'test@example.com',
     customerType: 'individual' as CustomerType,
+    isEhailing: false,
+    isElectricVehicle: false,
+    pdpaConsent: true,
   },
   {
+    fullName: 'Jane Smith',
     vehicleType: 'motorcycle' as VehicleType,
     nric: '987654-32-5678',
     plateNumber: 'XYZ9876',
@@ -19,8 +24,12 @@ export const sampleFormData: InsuranceFormData[] = [
     phoneNumber: '0198765432',
     email: 'motor@example.com',
     customerType: 'individual' as CustomerType,
+    isEhailing: false,
+    isElectricVehicle: false,
+    pdpaConsent: true,
   },
   {
+    fullName: 'ABC Company Sdn Bhd',
     vehicleType: 'car' as VehicleType,
     nric: '456789-01-2345',
     plateNumber: 'DEF5678',
@@ -28,11 +37,15 @@ export const sampleFormData: InsuranceFormData[] = [
     phoneNumber: '01122334455',
     email: 'company@example.com',
     customerType: 'company' as CustomerType,
+    isEhailing: false,
+    isElectricVehicle: false,
+    pdpaConsent: true,
   },
 ];
 
 // Default form values
 export const defaultFormValues: Partial<InsuranceFormData> = {
+  fullName: '',
   vehicleType: undefined,
   nric: '',
   plateNumber: '',
@@ -40,6 +53,9 @@ export const defaultFormValues: Partial<InsuranceFormData> = {
   phoneNumber: '',
   email: '',
   customerType: undefined,
+  isEhailing: false,
+  isElectricVehicle: false,
+  pdpaConsent: false,
 };
 
 // Form field options

@@ -40,6 +40,11 @@ const isValidNRICDate = (nric: string): boolean => {
 };
 
 export const insuranceFormSchema = z.object({
+  fullName: z
+    .string()
+    .min(1, 'Full name is required')
+    .min(2, 'Full name must be at least 2 characters')
+    .max(100, 'Full name must not exceed 100 characters'),
   vehicleType: z.enum(['car', 'motorcycle'], {
     message: 'Please select a vehicle type',
   }),
@@ -67,6 +72,13 @@ export const insuranceFormSchema = z.object({
   customerType: z.enum(['individual', 'company'], {
     message: 'Please select a customer type',
   }),
+  isEhailing: z.boolean(),
+  isElectricVehicle: z.boolean(),
+  pdpaConsent: z
+    .boolean()
+    .refine((val) => val === true, {
+      message: 'You must consent to the processing of your personal data under PDPA to proceed',
+    }),
 });
 
 export type InsuranceFormData = z.infer<typeof insuranceFormSchema>;

@@ -51,6 +51,7 @@ export const generateSampleFormData = (count: number = 10): InsuranceFormData[] 
     const customerTypes: CustomerType[] = ['individual', 'company'];
     
     samples.push({
+      fullName: `Test User ${i + 1}`,
       vehicleType: vehicleTypes[Math.floor(Math.random() * vehicleTypes.length)],
       nric: sampleNRICs[Math.floor(Math.random() * sampleNRICs.length)],
       plateNumber: samplePlateNumbers[Math.floor(Math.random() * samplePlateNumbers.length)],
@@ -58,6 +59,9 @@ export const generateSampleFormData = (count: number = 10): InsuranceFormData[] 
       phoneNumber: '0123456789', // Default dummy value
       email: 'test@example.com', // Default dummy value
       customerType: customerTypes[Math.floor(Math.random() * customerTypes.length)],
+      isEhailing: false,
+      isElectricVehicle: false,
+      pdpaConsent: true,
     });
   }
   
@@ -69,6 +73,7 @@ export const testScenarios: { name: string; data: InsuranceFormData }[] = [
   {
     name: 'Individual Car Owner - KL',
     data: {
+      fullName: 'Ahmad Rahman',
       vehicleType: 'car',
       nric: '900101-01-1234',
       plateNumber: 'WA1234A',
@@ -76,11 +81,15 @@ export const testScenarios: { name: string; data: InsuranceFormData }[] = [
       phoneNumber: '0123456789',
       email: 'kl_driver@example.com',
       customerType: 'individual',
+      isEhailing: false,
+      isElectricVehicle: false,
+      pdpaConsent: true,
     },
   },
   {
     name: 'Company Motorcycle - Selangor',
     data: {
+      fullName: 'Tech Solutions Sdn Bhd',
       vehicleType: 'motorcycle',
       nric: '850615-02-5678',
       plateNumber: 'BCA5678',
@@ -88,11 +97,15 @@ export const testScenarios: { name: string; data: InsuranceFormData }[] = [
       phoneNumber: '0198765432',
       email: 'company_fleet@example.com',
       customerType: 'company',
+      isEhailing: false,
+      isElectricVehicle: false,
+      pdpaConsent: true,
     },
   },
   {
     name: 'Individual Car Owner - Penang',
     data: {
+      fullName: 'Lim Wei Ming',
       vehicleType: 'car',
       nric: '920330-03-9012',
       plateNumber: 'PBA9012',
@@ -100,11 +113,15 @@ export const testScenarios: { name: string; data: InsuranceFormData }[] = [
       phoneNumber: '0178889999',
       email: 'penang_driver@example.com',
       customerType: 'individual',
+      isEhailing: false,
+      isElectricVehicle: false,
+      pdpaConsent: true,
     },
   },
   {
     name: 'Company Car Fleet - Johor',
     data: {
+      fullName: 'Johor Logistics Sdn Bhd',
       vehicleType: 'car',
       nric: '880722-04-3456',
       plateNumber: 'JHA3456',
@@ -112,6 +129,9 @@ export const testScenarios: { name: string; data: InsuranceFormData }[] = [
       phoneNumber: '0134445555',
       email: 'johor_biz@example.com',
       customerType: 'company',
+      isEhailing: false,
+      isElectricVehicle: false,
+      pdpaConsent: true,
     },
   },
 ];
