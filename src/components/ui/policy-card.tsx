@@ -76,10 +76,10 @@ export function PolicyCard({ policy, isSelected, onSelect, className }: PolicyCa
         <div className="flex items-start justify-between">
           <div>
             <CardTitle className="text-lg font-bold text-foreground">
-              Takaful Plan
+              {policy.provider.name}
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              Shariah-compliant coverage
+              Comprehensive coverage
             </p>
           </div>
           

@@ -21,10 +21,16 @@ export const insuranceProviders: InsuranceProvider[] = [
     trustScore: 8.8,
   },
   {
-    id: 'takaful-ikhlas',
-    name: 'Takaful Ikhlas',
-    logo: '/logos/takaful-ikhlas-logo.svg',
+    id: 'insurance-a',
+    name: 'Insurance A',
+    logo: '/logos/insurance-a-logo.svg',
     trustScore: 9.0,
+  },
+  {
+    id: 'insurance-b',
+    name: 'Insurance B',
+    logo: '/logos/insurance-b-logo.svg',
+    trustScore: 8.9,
   },
 ];
 
@@ -138,19 +144,18 @@ export const carInsurancePolicies: InsurancePolicy[] = [
     },
   },
   {
-    id: 'takaful-ikhlas-comprehensive-car',
-    provider: insuranceProviders[3], // Takaful Ikhlas
+    id: 'insurance-a-comprehensive-car',
+    provider: insuranceProviders[3], // Insurance A
     startDate: getStartDate(),
     expiryDate: getExpiryDate(),
-    description: 'Shariah-compliant comprehensive takaful coverage with ethical protection.',
+    description: 'Comprehensive coverage with full protection for your peace of mind.',
     features: [
-      'Shariah-compliant takaful',
-      'Comprehensive coverage',
+      'Full comprehensive coverage',
       '24/7 Roadside assistance',
       'Windscreen protection',
       'Flood coverage',
       'Theft protection',
-      'Halal investment returns',
+      'Bonus protection',
     ],
     originalPrice: 1950,
     discountPercentage: 12,
@@ -164,18 +169,17 @@ export const carInsurancePolicies: InsurancePolicy[] = [
     },
   },
   {
-    id: 'takaful-ikhlas-premium-car',
-    provider: insuranceProviders[3], // Takaful Ikhlas
+    id: 'insurance-b-premium-car',
+    provider: insuranceProviders[4], // Insurance B
     startDate: getStartDate(),
     expiryDate: getExpiryDate(),
-    description: 'Premium takaful plan with enhanced benefits and surplus distribution.',
+    description: 'Premium plan with enhanced benefits and additional coverage options.',
     features: [
-      'Premium takaful coverage',
-      'Surplus distribution',
+      'Premium comprehensive coverage',
       'Personal accident coverage',
       'Rental car coverage',
       'Global assistance',
-      'Halal investment',
+      'No claim bonus protection',
     ],
     originalPrice: 2200,
     discountPercentage: 8,
@@ -264,23 +268,47 @@ export const motorcycleInsurancePolicies: InsurancePolicy[] = [
     },
   },
   {
-    id: 'takaful-ikhlas-motorcycle-comprehensive',
-    provider: insuranceProviders[3], // Takaful Ikhlas
+    id: 'insurance-a-motorcycle-comprehensive',
+    provider: insuranceProviders[3], // Insurance A
     startDate: getStartDate(),
     expiryDate: getExpiryDate(),
-    description: 'Shariah-compliant comprehensive motorcycle takaful with rider protection.',
+    description: 'Comprehensive motorcycle coverage with full rider protection.',
     features: [
-      'Shariah-compliant takaful',
-      'Comprehensive coverage',
+      'Full comprehensive coverage',
       'Personal accident coverage',
       'Theft protection',
       'Roadside assistance',
       'Helmet coverage',
-      'Halal investment',
+      'Bonus protection',
     ],
     originalPrice: 680,
     discountPercentage: 10,
     finalPrice: 612,
+    coverage: {
+      liability: 'RM1,000,000',
+      comprehensive: true,
+      theft: true,
+      flood: true,
+      windscreen: false,
+    },
+  },
+  {
+    id: 'insurance-b-motorcycle-premium',
+    provider: insuranceProviders[4], // Insurance B
+    startDate: getStartDate(),
+    expiryDate: getExpiryDate(),
+    description: 'Premium motorcycle plan with enhanced benefits and additional protection.',
+    features: [
+      'Premium comprehensive coverage',
+      'Personal accident coverage',
+      'Theft protection',
+      'Roadside assistance',
+      'Helmet coverage',
+      'Accessories coverage',
+    ],
+    originalPrice: 720,
+    discountPercentage: 8,
+    finalPrice: 662.40,
     coverage: {
       liability: 'RM1,000,000',
       comprehensive: true,

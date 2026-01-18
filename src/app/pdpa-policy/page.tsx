@@ -82,7 +82,7 @@ export default function PDPAPolicyPage() {
           <ul className="list-disc list-inside space-y-2 text-muted-foreground ml-4">
             <li>
               <strong>Insurance Quotation Services:</strong> To provide you with
-              insurance quotes from Takaful Ikhlas
+              insurance quotes from our insurance partners
             </li>
             <li>
               <strong>Policy Processing:</strong> To process your insurance
@@ -126,7 +126,7 @@ export default function PDPAPolicyPage() {
           <ul className="list-disc list-inside space-y-2 text-muted-foreground ml-4">
             <li>
               <strong>Insurance Partners:</strong> We share your information
-              with Takaful Ikhlas to obtain quotations and process
+              with our insurance partners to obtain quotations and process
               applications
             </li>
             <li>
