@@ -14,10 +14,10 @@ export function Footer() {
           <div className="space-y-4">
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-sm">M</span>
+                <span className="text-primary-foreground font-bold text-sm">H</span>
               </div>
               <h3 className="text-xl font-bold text-foreground">
-                MYDOT
+                HALLU
               </h3>
             </div>
             <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">
@@ -27,11 +27,11 @@ export function Footer() {
 
           {/* Company Details */}
           <div className="space-y-4">
-            <h4 className="font-semibold text-foreground">Company Details</h4>
+            <h4 className="font-semibold text-foreground">Contact Us</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li className="font-medium text-foreground">MYDOT CONSULTING</li>
+              <li className="font-medium text-foreground">DC AUTO SERVICES</li>
               <li>SSM: 202503063833</li>
-              <li>Email : support@mydotconsulting.com</li>
+              <li>Phone: +60 12-345 6789</li>
             </ul>
           </div>
 
@@ -48,7 +48,7 @@ export function Footer() {
         </div>
 
         <div className="border-t mt-12 pt-8 text-center text-sm text-muted-foreground">
-          <p>&copy; {currentYear} MYDOT CONSULTING. All rights reserved.</p>
+          <p>&copy; {currentYear} HALLU by DC AUTO SERVICES. All rights reserved.</p>
         </div>
       </Container>
     </footer>

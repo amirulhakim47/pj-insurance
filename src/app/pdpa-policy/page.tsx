@@ -17,7 +17,7 @@ export default function PDPAPolicyPage() {
       content: (
         <div className="space-y-4">
           <p className="text-muted-foreground">
-            At MYDOT, we are committed to protecting your personal data and
+            At HALLU, we are committed to protecting your personal data and
             respecting your privacy. This Personal Data Protection Act 2010
             (PDPA) Policy explains how we collect, use, disclose, and safeguard
             your personal information when you use our insurance quotation and
@@ -193,10 +193,10 @@ export default function PDPAPolicyPage() {
           <p className="text-muted-foreground">
             To exercise any of these rights, please contact us at{' '}
             <a
-              href="mailto:privacy@mydot.my"
+              href="tel:+60123456789"
               className="text-primary hover:underline"
             >
-              privacy@mydot.my
+              +60 12-345 6789
             </a>
             . We will respond to your request within 21 days as required by PDPA.
           </p>
@@ -361,15 +361,6 @@ export default function PDPAPolicyPage() {
                 rights under PDPA, please contact us:
               </p>
               <div className="space-y-2 text-sm">
-                <p>
-                  <strong>Email:</strong>{' '}
-                  <a
-                    href="mailto:privacy@kawkaw.my"
-                    className="text-primary hover:underline"
-                  >
-                    privacy@kawkaw.my
-                  </a>
-                </p>
                 <p>
                   <strong>Phone:</strong>{' '}
                   <a

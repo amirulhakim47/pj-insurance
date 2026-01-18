@@ -49,10 +49,10 @@ export function PageLayout({
               {headerContent || (
                 <Link href="/" className="flex items-center space-x-2 transition-opacity hover:opacity-80">
                   <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                    <span className="text-primary-foreground font-bold text-sm">M</span>
+                    <span className="text-primary-foreground font-bold text-sm">H</span>
                   </div>
                   <h1 className="text-xl font-bold text-foreground">
-                    MYDOT
+                    HALLU
                   </h1>
                 </Link>
               )}
