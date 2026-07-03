@@ -68,12 +68,12 @@ export function PageLayout({
                   </Link>
 
                   {/* Desktop nav */}
-                  <div className="hidden md:flex items-center gap-8">
+                  <div className="hidden md:flex items-center gap-10">
                     {NAV_LINKS.map((link) => (
                       <a
                         key={link.label}
                         href={link.href}
-                        className="text-sm text-muted-foreground hover:text-foreground transition-colors font-medium"
+                        className="text-[15px] text-muted-foreground hover:text-primary transition-colors duration-200 font-normal tracking-wide"
                       >
                         {link.label}
                       </a>
@@ -82,7 +82,7 @@ export function PageLayout({
 
                   {/* Desktop CTA */}
                   <div className="hidden md:flex items-center gap-4">
-                    <Button asChild size="sm" className="rounded-full px-5">
+                    <Button asChild size="sm" variant="outline" className="rounded-full px-6 border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-300">
                       <Link href="/quote">Get Quote</Link>
                     </Button>
                   </div>
@@ -151,12 +151,12 @@ export function CenteredLayout({
     <div className={cn('min-h-[calc(100vh-4rem)] flex items-center justify-center px-5 py-12', className)}>
       <div className={cn('w-full space-y-8', maxWidth)}>
         {(title || subtitle) && (
-          <div className="text-center space-y-2">
+          <div className="text-center space-y-3">
             {title && (
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">{title}</h1>
+              <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-foreground">{title}</h1>
             )}
             {subtitle && (
-              <p className="text-muted-foreground text-base">{subtitle}</p>
+              <p className="text-muted-foreground text-[15px] leading-relaxed">{subtitle}</p>
             )}
           </div>
         )}
@@ -269,8 +269,8 @@ export function StepIndicator({ steps, currentStep, className }: StepIndicatorPr
               <li className="flex items-center gap-2">
                 <div
                   className={cn(
-                    'w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-colors',
-                    isActive && 'bg-primary text-primary-foreground',
+                    'w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-all duration-300',
+                    isActive && 'bg-primary text-primary-foreground shadow-md shadow-primary/20',
                     isCompleted && 'bg-green-600 text-white',
                     !isActive && !isCompleted && 'bg-muted text-muted-foreground',
                   )}
@@ -285,10 +285,10 @@ export function StepIndicator({ steps, currentStep, className }: StepIndicatorPr
                 </div>
                 <span
                   className={cn(
-                    'text-xs font-medium hidden sm:inline',
+                    'text-xs font-medium hidden sm:inline transition-colors duration-300',
                     isActive && 'text-foreground',
                     isCompleted && 'text-green-600',
-                    !isActive && !isCompleted && 'text-muted-foreground',
+                    !isActive && !isCompleted && 'text-muted-foreground/70',
                   )}
                 >
                   {step}
@@ -296,7 +296,7 @@ export function StepIndicator({ steps, currentStep, className }: StepIndicatorPr
               </li>
               {index < steps.length - 1 && (
                 <li aria-hidden="true">
-                  <div className={cn('w-8 sm:w-12 h-px', isCompleted ? 'bg-green-500' : 'bg-border')} />
+                  <div className={cn('w-8 sm:w-12 h-px transition-colors duration-300', isCompleted ? 'bg-green-500' : 'bg-border/60')} />
                 </li>
               )}
             </React.Fragment>

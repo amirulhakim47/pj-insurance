@@ -131,18 +131,18 @@ interface InsuranceLoadingProps {
 
 export function InsuranceLoading({ progress, message, className }: InsuranceLoadingProps) {
   return (
-    <div className={cn('text-center space-y-6', className)}>
+    <div className={cn('text-center space-y-8', className)}>
       <div className="flex justify-center">
         <div className="relative">
-          <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
-            <Loader2 className="w-6 h-6 text-primary animate-spin" />
+          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center shadow-lg shadow-primary/10">
+            <Loader2 className="w-7 h-7 text-primary animate-spin" />
           </div>
         </div>
       </div>
 
-      <div className="space-y-3 max-w-xs mx-auto">
+      <div className="space-y-4 max-w-xs mx-auto">
         <AnimatedProgress value={progress} showPercentage={false} />
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground leading-relaxed">
           {message}
         </p>
       </div>

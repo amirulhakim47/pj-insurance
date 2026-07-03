@@ -315,16 +315,16 @@ export default function PDPAPolicyPage() {
                 Back to Quote Form
               </Link>
             </Button>
-            <div className="flex items-center space-x-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                <Shield className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            <div className="flex items-center space-x-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-100 to-blue-50 shadow-lg shadow-blue-100/50 dark:bg-blue-900/30">
+                <Shield className="h-7 w-7 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <h1 className="text-3xl md:text-4xl font-bold text-foreground">
-                  Personal Data Protection Act (PDPA) Policy
+                <h1 className="font-serif text-3xl md:text-4xl font-bold text-foreground tracking-tight">
+                  PDPA Policy
                 </h1>
-                <p className="text-muted-foreground mt-2">
-                  Last updated: December 2024
+                <p className="text-muted-foreground/70 mt-1.5 text-sm">
+                  Personal Data Protection Act 2010 &middot; Last updated December 2024
                 </p>
               </div>
             </div>
@@ -335,13 +335,13 @@ export default function PDPAPolicyPage() {
             {sections.map((section) => {
               const Icon = section.icon;
               return (
-                <Card key={section.id} className="shadow-sm">
+                <Card key={section.id} className="shadow-sm border-border/40 hover:shadow-md transition-shadow duration-300">
                   <CardHeader>
                     <div className="flex items-center space-x-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary/12 to-primary/5">
                         <Icon className="h-5 w-5 text-primary" />
                       </div>
-                      <CardTitle className="text-xl">{section.title}</CardTitle>
+                      <CardTitle className="text-lg">{section.title}</CardTitle>
                     </div>
                   </CardHeader>
                   <CardContent className="pt-0">
@@ -353,9 +353,9 @@ export default function PDPAPolicyPage() {
           </div>
 
           {/* Contact Information */}
-          <Card className="bg-muted/50">
+          <Card className="bg-gradient-to-br from-muted/20 to-muted/40 border-border/30 shadow-sm">
             <CardContent className="pt-6">
-              <h3 className="font-semibold text-lg mb-4">Contact Us</h3>
+              <h3 className="font-serif font-semibold text-lg mb-4">Contact Us</h3>
               <p className="text-muted-foreground mb-4">
                 If you have any questions, concerns, or wish to exercise your
                 rights under PDPA, please contact us:

@@ -243,15 +243,42 @@ export type UBBReferCode =
   | 'UBBE006';  // Recon Risk
 
 export const UBB_REFER_MESSAGES: Record<string, string> = {
-  UBBE001: 'Your previous policy has lapsed. Please contact an insurance agent for assistance.',
-  UBBE001R: 'Your lapsed policy requires further review. Please contact an insurance agent.',
-  UBBE002: 'Your policy is not due for renewal yet. Renewal is available within 90 days of your policy expiry date.',
-  UBBE002R: 'Your policy renewal date requires further review.',
-  UBBE003: 'Your claims history requires further review.',
-  UBBE004: 'Multiple claims detected on your record. This requires further review by an underwriter.',
-  UBBE005: 'Your application requires further risk assessment.',
-  UBBE006: 'Your application requires further risk assessment.',
+  UBBE001: 'Oops! Your previous policy expired on {{EXPIRY_DATE}} and therefore we are unable to process your request online.',
+  UBBE001R: 'Oops! Your previous policy expired on {{EXPIRY_DATE}} and therefore we are unable to process your request online.',
+  UBBE002: 'Oops! Your motor policy will expire on {{EXPIRY_DATE}}. Please come back again on {{RENEWAL_DATE}} to renew your motor policy.',
+  UBBE002R: 'Oops! Your motor policy will expire on {{EXPIRY_DATE}}. Please come back again on {{RENEWAL_DATE}} to renew your motor policy.',
+  UBBE003: 'Oops! We are sorry that we are unable to process your request due to our online risk acceptance controls.',
+  UBBE004: 'Oops! We are sorry that we are unable to process your request due to our online risk acceptance controls.',
+  UBBE005: 'Oops! We are sorry that we are unable to process your request due to our online risk acceptance controls.',
+  UBBE006: 'Oops! We are sorry that we are unable to process your request due to our online risk acceptance controls.',
+  RP007: 'Oops! We are sorry that we are unable to process your request due to our online risk acceptance controls.',
+  CM001: 'Oops! We are sorry that we are unable to process your request due to our online risk acceptance controls.',
+  CM002: 'Oops! We are sorry that we are unable to process your request due to our online risk acceptance controls.',
+  CM003: 'Oops! We are sorry that we are unable to process your request due to our online risk acceptance controls.',
+  CM004: 'Oops! We are sorry that we are unable to process your request due to our online risk acceptance controls.',
+  CM006: 'Oops! We are sorry that we are unable to process your request due to our online risk acceptance controls.',
+  CM007: 'Oops! We are sorry that we are unable to process your request due to our online risk acceptance controls.',
+  CM008: 'Oops! We are sorry that we are unable to process your request due to our online risk acceptance controls.',
+  CM010: 'Oops! We are sorry that we are unable to process your request due to our online risk acceptance controls.',
+  CM011: 'Oops! We are sorry that we are unable to process your request due to our online risk acceptance controls.',
+  CM019: 'Oops! We are sorry that we are unable to process your request due to our online risk acceptance controls.',
+  ID_MISMATCH: 'Oops! The ID (NRIC / Old IC / Passport / Army / Police) no. does not match the vehicle no. provided. Please refer to your previous policy or vehicle registration card for the ID no. and retry.',
+  NCD_UNAVAILABLE: 'Oops! We are unable to obtain your vehicle No Claim Discount or your motor insurance has already been renewed.',
+  CLAIMS_CURRENT: 'Oops! Your current policy has a claim and we are unable to process your request online.',
 };
+
+export function formatUBBMessage(code: string, expiryDate?: string): string {
+  let msg = UBB_REFER_MESSAGES[code] || 'Oops! We are sorry that we are unable to process your request due to our online risk acceptance controls.';
+  if (expiryDate) {
+    msg = msg.replace(/\{\{EXPIRY_DATE\}\}/g, expiryDate);
+    const expiry = new Date(expiryDate);
+    const renewal = new Date(expiry);
+    renewal.setDate(renewal.getDate() - 90);
+    const renewalStr = renewal.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    msg = msg.replace(/\{\{RENEWAL_DATE\}\}/g, renewalStr);
+  }
+  return msg;
+}
 
 // ── API Error ──
 

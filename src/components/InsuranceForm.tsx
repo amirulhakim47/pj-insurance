@@ -91,7 +91,7 @@ export default function InsuranceForm() {
           <DataProtectionCard />
         </div>
 
-        <Card className="border-border/60">
+        <Card className="border-border/40 shadow-sm">
           <CardHeader className="text-center pb-2">
             <CardTitle className="text-xl font-semibold text-foreground">
               Vehicle &amp; personal details
@@ -285,7 +285,7 @@ export default function InsuranceForm() {
                 )}
               />
 
-              <div className="space-y-3 pt-3 border-t border-border/60">
+              <div className="space-y-3 pt-3 border-t border-border/40">
                 <h3 className="text-sm font-semibold text-foreground">
                   Additional vehicle information
                 </h3>
@@ -296,7 +296,7 @@ export default function InsuranceForm() {
                   render={({ field }) => (
                     <label
                       htmlFor="isEhailing"
-                      className="flex items-center gap-3 p-3 rounded-lg border border-border/60 hover:bg-muted/50 transition-colors cursor-pointer"
+                      className="flex items-center gap-3 p-3 rounded-lg border border-border/40 hover:bg-muted/30 transition-all duration-300 cursor-pointer"
                     >
                       <div className="relative flex items-center justify-center flex-shrink-0">
                         <input
@@ -325,7 +325,7 @@ export default function InsuranceForm() {
                   render={({ field }) => (
                     <label
                       htmlFor="isElectricVehicle"
-                      className="flex items-center gap-3 p-3 rounded-lg border border-border/60 hover:bg-muted/50 transition-colors cursor-pointer"
+                      className="flex items-center gap-3 p-3 rounded-lg border border-border/40 hover:bg-muted/30 transition-all duration-300 cursor-pointer"
                     >
                       <div className="relative flex items-center justify-center flex-shrink-0">
                         <input
@@ -349,7 +349,7 @@ export default function InsuranceForm() {
                 />
               </div>
 
-              <div className="pt-3 border-t border-border/60">
+              <div className="pt-3 border-t border-border/40">
                 <Controller
                   name="pdpaConsent"
                   control={control}
@@ -377,7 +377,7 @@ export default function InsuranceForm() {
                   ) : (
                     <>
                       Get insurance quotes
-                      <ArrowRight className="w-4 h-4 ml-2" />
+                      <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-0.5" />
                     </>
                   )}
                 </Button>

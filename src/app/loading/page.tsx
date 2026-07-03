@@ -9,10 +9,20 @@ import { loadingMessages } from '@/data/sampleData';
 import { getVehicleDetails } from '@/lib/allianz-api';
 import type { InsuranceFormData } from '@/types';
 import type { IdentityType, ApiErrorResponse } from '@/types/allianz';
-import { UBB_REFER_MESSAGES } from '@/types/allianz';
+import { formatUBBMessage } from '@/types/allianz';
 import { AlertTriangle, XCircle, ArrowLeft } from 'lucide-react';
 
-const steps = ['Details', 'Loading', 'Results'];
+const STEPS = ['Vehicle Details', 'Quotation', 'Customer Info', 'Review & Pay'];
+
+function parseIsmClaims(ismSrespCode: string, ismSrespValue: string): string {
+  const codes = ismSrespCode.split('|').map((s) => s.trim());
+  const values = ismSrespValue.split('|').map((s) => s.trim());
+  const e012Index = codes.indexOf('E012');
+  if (e012Index !== -1 && values[e012Index]) {
+    return values[e012Index];
+  }
+  return '0';
+}
 
 export default function LoadingPage() {
   const router = useRouter();
@@ -71,17 +81,12 @@ export default function LoadingPage() {
 
         let noOfClaims = '0';
         if (result.ismSrespCode && result.ismSrespValue) {
-          const codes = result.ismSrespCode.split(',').map((s: string) => s.trim());
-          const values = result.ismSrespValue.split(',').map((s: string) => s.trim());
-          const e012Index = codes.indexOf('E012');
-          if (e012Index !== -1 && values[e012Index]) {
-            noOfClaims = values[e012Index];
-          }
+          noOfClaims = parseIsmClaims(result.ismSrespCode, result.ismSrespValue);
         }
         sessionStorage.setItem('allianz_noOfClaims', noOfClaims);
 
         if (parseInt(noOfClaims, 10) >= 2) {
-          setError('Your claims history exceeds the limit for online processing. Please contact an agent for assistance.');
+          setError('Oops! We are sorry that we are unable to process your request due to your claims history. Please contact an agent for assistance.');
           setErrorDetails({ ubbReferCodes: ['UBBE004'] });
           setProgress(100);
           return;
@@ -99,10 +104,9 @@ export default function LoadingPage() {
         }
 
         if (apiErr?.code === 'UBB_REFER' && apiErr.ubbReferCodes?.length) {
-          const messages = apiErr.ubbReferCodes
-            .map((code) => UBB_REFER_MESSAGES[code])
-            .filter(Boolean);
-          setError(messages[0] || 'Your application requires further review.');
+          const firstCode = apiErr.ubbReferCodes[0];
+          const message = formatUBBMessage(firstCode, apiErr.policyExpiryDate);
+          setError(message);
           setErrorDetails({
             ubbReferCodes: apiErr.ubbReferCodes,
             policyExpiryDate: apiErr.policyExpiryDate,
@@ -130,25 +134,25 @@ export default function LoadingPage() {
     return (
       <PageLayout>
         <CenteredLayout maxWidth="max-w-lg">
-          <StepIndicator steps={steps} currentStep={1} />
+          <StepIndicator steps={STEPS} currentStep={0} />
           <div className="space-y-6 text-center">
-            <div className={`mx-auto w-14 h-14 rounded-full flex items-center justify-center ${
-              isUbbRefer ? 'bg-amber-100' : 'bg-red-100'
+            <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center shadow-lg ${
+              isUbbRefer ? 'bg-amber-50 shadow-amber-100/50' : 'bg-red-50 shadow-red-100/50'
             }`}>
               {isUbbRefer ? (
-                <AlertTriangle className="w-6 h-6 text-amber-600" />
+                <AlertTriangle className="w-7 h-7 text-amber-600" />
               ) : (
-                <XCircle className="w-6 h-6 text-red-600" />
+                <XCircle className="w-7 h-7 text-red-600" />
               )}
             </div>
-            <div className="space-y-2">
-              <h1 className="text-xl font-bold text-foreground">
+            <div className="space-y-3">
+              <h1 className="font-serif text-xl font-bold text-foreground">
                 {isUbbRefer ? 'Unable to proceed' : 'Something went wrong'}
               </h1>
               <p className="text-sm text-muted-foreground leading-relaxed">{error}</p>
             </div>
             {errorDetails?.policyExpiryDate && (
-              <div className="bg-muted/50 rounded-xl p-4 max-w-xs mx-auto">
+              <div className="bg-muted/30 rounded-xl p-4 max-w-xs mx-auto border border-border/40">
                 <p className="text-xs text-muted-foreground">Policy expiry date</p>
                 <p className="text-base font-semibold text-foreground mt-0.5">
                   {errorDetails.policyExpiryDate}
@@ -159,12 +163,12 @@ export default function LoadingPage() {
               <div className="space-y-1.5 max-w-sm mx-auto text-left">
                 {errorDetails.ubbReferCodes.slice(1).map((code) => (
                   <p key={code} className="text-xs text-muted-foreground">
-                    {UBB_REFER_MESSAGES[code] || code}
+                    {formatUBBMessage(code, errorDetails.policyExpiryDate)}
                   </p>
                 ))}
               </div>
             )}
-            <Button onClick={() => router.push('/')} className="h-11">
+            <Button onClick={() => router.push('/')} className="h-11 rounded-full px-6">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to form
             </Button>
@@ -177,14 +181,14 @@ export default function LoadingPage() {
   return (
     <PageLayout>
       <CenteredLayout maxWidth="max-w-lg">
-        <StepIndicator steps={steps} currentStep={1} />
+        <StepIndicator steps={STEPS} currentStep={0} />
 
         <div className="space-y-8">
-          <div className="text-center space-y-2">
-            <h1 className="text-2xl font-bold text-foreground">
+          <div className="text-center space-y-3">
+            <h1 className="font-serif text-2xl font-bold text-foreground tracking-tight">
               Finding your best rates
             </h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-[15px] text-muted-foreground leading-relaxed">
               Fetching vehicle details and comparing policies.
             </p>
           </div>

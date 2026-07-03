@@ -41,7 +41,7 @@ export function DataProtectionCard({ className }: { className?: string }) {
   ];
 
   return (
-    <Card className={cn('border border-border shadow-sm', className)}>
+    <Card className={cn('border border-border/40 shadow-sm', className)}>
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
