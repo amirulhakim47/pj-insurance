@@ -1,9 +1,11 @@
 'use client';
 
 import * as React from 'react';
-import { cn, getHref } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { Footer } from './footer';
+import { Button } from './button';
+import { Menu, X } from 'lucide-react';
 
 interface ContainerProps {
   children: React.ReactNode;
@@ -21,11 +23,18 @@ export function Container({ children, className, size = 'lg' }: ContainerProps) 
   };
 
   return (
-    <div className={cn('mx-auto px-4 sm:px-6 lg:px-8', sizeClasses[size], className)}>
+    <div className={cn('mx-auto px-5 sm:px-8 lg:px-10', sizeClasses[size], className)}>
       {children}
     </div>
   );
 }
+
+const NAV_LINKS = [
+  { href: '/', label: 'Home' },
+  { href: '#coverage', label: 'Coverage' },
+  { href: '#how-it-works', label: 'How It Works' },
+  { href: '#reviews', label: 'Reviews' },
+];
 
 interface PageLayoutProps {
   children: React.ReactNode;
@@ -34,33 +43,86 @@ interface PageLayoutProps {
   headerContent?: React.ReactNode;
 }
 
-export function PageLayout({ 
-  children, 
-  className, 
-  showHeader = true, 
-  headerContent 
+export function PageLayout({
+  children,
+  className,
+  showHeader = true,
+  headerContent,
 }: PageLayoutProps) {
+  const [mobileOpen, setMobileOpen] = React.useState(false);
+
   return (
     <div className={cn('min-h-screen bg-background flex flex-col', className)}>
       {showHeader && (
-        <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-40">
-          <Container>
-            <div className="flex items-center justify-between h-16">
+        <header className="sticky top-0 z-40 bg-background/90 backdrop-blur-md border-b border-border/40">
+          <Container size="xl">
+            <nav className="flex items-center justify-between h-16">
               {headerContent || (
-                <Link href="/" className="flex items-center space-x-2 transition-opacity hover:opacity-80">
-                  <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                    <span className="text-primary-foreground font-bold text-sm">H</span>
+                <>
+                  {/* Logo */}
+                  <Link href="/" className="flex items-center gap-2.5 group flex-shrink-0">
+                    <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center transition-transform duration-200 group-hover:scale-105">
+                      <span className="text-primary-foreground font-bold text-sm">H</span>
+                    </div>
+                    <span className="text-lg font-bold tracking-tight text-foreground">HALLU</span>
+                  </Link>
+
+                  {/* Desktop nav */}
+                  <div className="hidden md:flex items-center gap-8">
+                    {NAV_LINKS.map((link) => (
+                      <a
+                        key={link.label}
+                        href={link.href}
+                        className="text-sm text-muted-foreground hover:text-foreground transition-colors font-medium"
+                      >
+                        {link.label}
+                      </a>
+                    ))}
                   </div>
-                  <h1 className="text-xl font-bold text-foreground">
-                    HALLU
-                  </h1>
-                </Link>
+
+                  {/* Desktop CTA */}
+                  <div className="hidden md:flex items-center gap-4">
+                    <Button asChild size="sm" className="rounded-full px-5">
+                      <Link href="/quote">Get Quote</Link>
+                    </Button>
+                  </div>
+
+                  {/* Mobile menu toggle */}
+                  <button
+                    onClick={() => setMobileOpen(!mobileOpen)}
+                    className="md:hidden p-2 -mr-2 text-foreground"
+                    aria-label="Toggle menu"
+                  >
+                    {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                  </button>
+                </>
               )}
-            </div>
+            </nav>
+
+            {/* Mobile nav panel */}
+            {mobileOpen && (
+              <div className="md:hidden border-t border-border/40 py-4 space-y-1">
+                {NAV_LINKS.map((link) => (
+                  <a
+                    key={link.label}
+                    href={link.href}
+                    onClick={() => setMobileOpen(false)}
+                    className="block px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors"
+                  >
+                    {link.label}
+                  </a>
+                ))}
+                <div className="pt-2 px-3">
+                  <Button asChild size="sm" className="w-full rounded-full">
+                    <Link href="/quote" onClick={() => setMobileOpen(false)}>Get Quote</Link>
+                  </Button>
+                </div>
+              </div>
+            )}
           </Container>
         </header>
       )}
-      
+
       <main id="main-content" className="flex-1" tabIndex={-1}>
         {children}
       </main>
@@ -78,23 +140,23 @@ interface CenteredLayoutProps {
   maxWidth?: string;
 }
 
-export function CenteredLayout({ 
-  children, 
-  className, 
-  title, 
+export function CenteredLayout({
+  children,
+  className,
+  title,
   subtitle,
-  maxWidth = 'max-w-md'
+  maxWidth = 'max-w-md',
 }: CenteredLayoutProps) {
   return (
-    <div className={cn('min-h-screen flex items-center justify-center p-4', className)}>
-      <div className={cn('w-full space-y-6', maxWidth)}>
+    <div className={cn('min-h-[calc(100vh-4rem)] flex items-center justify-center px-5 py-12', className)}>
+      <div className={cn('w-full space-y-8', maxWidth)}>
         {(title || subtitle) && (
           <div className="text-center space-y-2">
             {title && (
-              <h1 className="text-3xl font-bold text-foreground">{title}</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">{title}</h1>
             )}
             {subtitle && (
-              <p className="text-muted-foreground">{subtitle}</p>
+              <p className="text-muted-foreground text-base">{subtitle}</p>
             )}
           </div>
         )}
@@ -119,16 +181,14 @@ interface GridProps {
 
 export function Grid({ children, className, cols, gap = 4 }: GridProps) {
   const gridCols = cols || { default: 1, md: 2, lg: 3 };
-  
+
   const getGridClasses = () => {
     const classes = [`gap-${gap}`];
-    
     if (gridCols.default) classes.push(`grid-cols-${gridCols.default}`);
     if (gridCols.sm) classes.push(`sm:grid-cols-${gridCols.sm}`);
     if (gridCols.md) classes.push(`md:grid-cols-${gridCols.md}`);
     if (gridCols.lg) classes.push(`lg:grid-cols-${gridCols.lg}`);
     if (gridCols.xl) classes.push(`xl:grid-cols-${gridCols.xl}`);
-    
     return classes.join(' ');
   };
 
@@ -144,34 +204,41 @@ interface SectionProps {
   className?: string;
   title?: string;
   subtitle?: string;
+  eyebrow?: string;
   padding?: 'none' | 'sm' | 'md' | 'lg' | 'xl';
 }
 
-export function Section({ 
-  children, 
-  className, 
-  title, 
-  subtitle, 
-  padding = 'lg' 
+export function Section({
+  children,
+  className,
+  title,
+  subtitle,
+  eyebrow,
+  padding = 'lg',
 }: SectionProps) {
   const paddingClasses = {
     none: '',
-    sm: 'py-8',
-    md: 'py-12',
-    lg: 'py-16',
-    xl: 'py-24',
+    sm: 'py-10',
+    md: 'py-14',
+    lg: 'py-20',
+    xl: 'py-28',
   };
 
   return (
     <section className={cn(paddingClasses[padding], className)}>
-      <Container>
+      <Container size="xl">
         {(title || subtitle) && (
-          <div className="text-center mb-12 space-y-4">
+          <div className="text-center mb-14 max-w-2xl mx-auto">
+            {eyebrow && (
+              <p className="text-xs font-semibold tracking-widest uppercase text-primary mb-3">
+                {eyebrow}
+              </p>
+            )}
             {title && (
-              <h2 className="text-3xl font-bold text-foreground">{title}</h2>
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">{title}</h2>
             )}
             {subtitle && (
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              <p className="mt-3 text-base text-muted-foreground leading-relaxed">
                 {subtitle}
               </p>
             )}
@@ -191,49 +258,52 @@ interface StepIndicatorProps {
 
 export function StepIndicator({ steps, currentStep, className }: StepIndicatorProps) {
   return (
-    <div className={cn('flex items-center justify-center space-x-4 mb-8', className)}>
-      {steps.map((step, index) => {
-        const isActive = index === currentStep;
-        const isCompleted = index < currentStep;
-        
-        return (
-          <React.Fragment key={index}>
-            <div className="flex flex-col items-center space-y-2">
-              <div
-                className={cn(
-                  'w-8 h-8 rounded-full border-2 flex items-center justify-center text-sm font-medium transition-all',
-                  isActive && 'border-primary bg-primary text-primary-foreground',
-                  isCompleted && 'border-green-500 bg-green-500 text-white',
-                  !isActive && !isCompleted && 'border-muted-foreground/30 text-muted-foreground'
-                )}
-              >
-                {isCompleted ? '✓' : index + 1}
-              </div>
-              <span
-                className={cn(
-                  'text-xs font-medium text-center max-w-16',
-                  isActive && 'text-primary',
-                  isCompleted && 'text-green-600',
-                  !isActive && !isCompleted && 'text-muted-foreground'
-                )}
-              >
-                {step}
-              </span>
-            </div>
-            
-            {index < steps.length - 1 && (
-              <div
-                className={cn(
-                  'w-12 h-0.5 transition-all',
-                  isCompleted && 'bg-green-500',
-                  !isCompleted && 'bg-muted-foreground/30'
-                )}
-              />
-            )}
-          </React.Fragment>
-        );
-      })}
-    </div>
+    <nav aria-label="Progress" className={cn('mb-10', className)}>
+      <ol className="flex items-center justify-center gap-2 sm:gap-3">
+        {steps.map((step, index) => {
+          const isActive = index === currentStep;
+          const isCompleted = index < currentStep;
+
+          return (
+            <React.Fragment key={step}>
+              <li className="flex items-center gap-2">
+                <div
+                  className={cn(
+                    'w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-colors',
+                    isActive && 'bg-primary text-primary-foreground',
+                    isCompleted && 'bg-green-600 text-white',
+                    !isActive && !isCompleted && 'bg-muted text-muted-foreground',
+                  )}
+                >
+                  {isCompleted ? (
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : (
+                    index + 1
+                  )}
+                </div>
+                <span
+                  className={cn(
+                    'text-xs font-medium hidden sm:inline',
+                    isActive && 'text-foreground',
+                    isCompleted && 'text-green-600',
+                    !isActive && !isCompleted && 'text-muted-foreground',
+                  )}
+                >
+                  {step}
+                </span>
+              </li>
+              {index < steps.length - 1 && (
+                <li aria-hidden="true">
+                  <div className={cn('w-8 sm:w-12 h-px', isCompleted ? 'bg-green-500' : 'bg-border')} />
+                </li>
+              )}
+            </React.Fragment>
+          );
+        })}
+      </ol>
+    </nav>
   );
 }
 
@@ -247,14 +317,14 @@ interface FlexProps {
   wrap?: boolean;
 }
 
-export function Flex({ 
-  children, 
-  className, 
+export function Flex({
+  children,
+  className,
   direction = 'row',
   align = 'start',
   justify = 'start',
   gap = 0,
-  wrap = false
+  wrap = false,
 }: FlexProps) {
   const directionClass = direction === 'col' ? 'flex-col' : 'flex-row';
   const alignClass = `items-${align}`;
@@ -263,15 +333,7 @@ export function Flex({
   const wrapClass = wrap ? 'flex-wrap' : '';
 
   return (
-    <div className={cn(
-      'flex',
-      directionClass,
-      alignClass,
-      justifyClass,
-      gapClass,
-      wrapClass,
-      className
-    )}>
+    <div className={cn('flex', directionClass, alignClass, justifyClass, gapClass, wrapClass, className)}>
       {children}
     </div>
   );

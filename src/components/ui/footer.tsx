@@ -2,56 +2,58 @@
 
 import * as React from 'react';
 import { Container } from './layout';
+import Link from 'next/link';
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="border-t bg-muted/30 py-12 mt-auto">
+    <footer className="border-t border-border/60 bg-muted/20 mt-auto">
       <Container>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Brand Info */}
-          <div className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-sm">H</span>
+        <div className="py-12 grid grid-cols-1 md:grid-cols-[1.5fr_1fr_1fr] gap-10">
+          <div className="space-y-3">
+            <Link href="/" className="flex items-center gap-2.5">
+              <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
+                <span className="text-primary-foreground font-bold text-xs">H</span>
               </div>
-              <h3 className="text-xl font-bold text-foreground">
-                HALLU
-              </h3>
-            </div>
-            <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">
-              Your trusted partner for seamless insurance renewals. We simplify the process so you can drive with peace of mind.
+              <span className="text-base font-bold tracking-tight text-foreground">HALLU</span>
+            </Link>
+            <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
+              A registered digital intermediary of Allianz General Insurance Company (Malaysia) Berhad. Renew your motor insurance online.
             </p>
           </div>
 
-          {/* Company Details */}
-          <div className="space-y-4">
-            <h4 className="font-semibold text-foreground">Contact Us</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
+          <div className="space-y-3">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Company</h4>
+            <ul className="space-y-2 text-sm">
               <li className="font-medium text-foreground">DC AUTO SERVICES</li>
-              <li>SSM: 202503063833</li>
-              <li>Phone: +60 12-345 6789</li>
+              <li className="text-muted-foreground">SSM: 202503063833</li>
+              <li className="text-muted-foreground">+60 12-345 6789</li>
             </ul>
           </div>
 
-          {/* Quick Links (Optional but good for a modern footer) */}
-          <div className="space-y-4">
-            <h4 className="font-semibold text-foreground">Support</h4>
+          <div className="space-y-3">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Legal</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><a href="#" className="hover:text-primary transition-colors">Help Center</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">Terms of Service</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">Privacy Policy</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">Contact Us</a></li>
+              <li>
+                <Link href="/pdpa-policy" className="hover:text-foreground transition-colors">
+                  Privacy Policy
+                </Link>
+              </li>
+              <li>
+                <a href="#" className="hover:text-foreground transition-colors">Terms of Service</a>
+              </li>
+              <li>
+                <a href="#" className="hover:text-foreground transition-colors">Contact</a>
+              </li>
             </ul>
           </div>
         </div>
 
-        <div className="border-t mt-12 pt-8 text-center text-sm text-muted-foreground">
-          <p>&copy; {currentYear} HALLU by DC AUTO SERVICES. All rights reserved.</p>
+        <div className="border-t border-border/60 py-6 text-center text-xs text-muted-foreground">
+          &copy; {currentYear} HALLU by DC AUTO SERVICES. All rights reserved.
         </div>
       </Container>
     </footer>
   );
 }
-

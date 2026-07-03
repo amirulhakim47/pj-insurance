@@ -88,7 +88,6 @@ function PaymentStatusContent() {
         const marketingConsent = sessionStorage.getItem('allianz_marketingConsent') || 'N';
         const customerDetailsRaw = sessionStorage.getItem('allianz_customerDetails');
 
-        // Use customer details if available, otherwise fall back to form data
         let mobilePrefix = '6012';
         let mobile = formData.phoneNumber;
         let fullName = formData.fullName;
@@ -170,9 +169,9 @@ function PaymentStatusContent() {
     return (
       <CenteredLayout maxWidth="max-w-md">
         <div className="flex flex-col items-center justify-center space-y-4 p-8">
-          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <h2 className="text-xl font-semibold">Verifying Payment...</h2>
-          <p className="text-muted-foreground text-center">Please do not close this window.</p>
+          <div className="w-10 h-10 border-3 border-primary border-t-transparent rounded-full animate-spin" />
+          <h2 className="text-lg font-semibold">Verifying payment...</h2>
+          <p className="text-sm text-muted-foreground text-center">Do not close this window.</p>
         </div>
       </CenteredLayout>
     );
@@ -182,9 +181,9 @@ function PaymentStatusContent() {
     return (
       <CenteredLayout maxWidth="max-w-md">
         <div className="flex flex-col items-center justify-center space-y-4 p-8">
-          <div className="w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full animate-spin" />
-          <h2 className="text-xl font-semibold text-green-600">Payment Verified!</h2>
-          <p className="text-muted-foreground text-center">Submitting your policy to Allianz...</p>
+          <div className="w-10 h-10 border-3 border-green-500 border-t-transparent rounded-full animate-spin" />
+          <h2 className="text-lg font-semibold text-green-600">Payment verified</h2>
+          <p className="text-sm text-muted-foreground text-center">Submitting your policy to Allianz...</p>
         </div>
       </CenteredLayout>
     );
@@ -194,9 +193,9 @@ function PaymentStatusContent() {
     return (
       <CenteredLayout maxWidth="max-w-md">
         <div className="flex flex-col items-center justify-center space-y-4 p-8">
-          <CheckCircle className="w-16 h-16 text-green-500" />
-          <h2 className="text-2xl font-bold text-green-600">Payment Successful!</h2>
-          <p className="text-center text-muted-foreground">Redirecting you to confirmation page...</p>
+          <CheckCircle className="w-14 h-14 text-green-500" />
+          <h2 className="text-xl font-bold text-green-600">Payment successful</h2>
+          <p className="text-sm text-center text-muted-foreground">Redirecting to confirmation...</p>
         </div>
       </CenteredLayout>
     );
@@ -204,27 +203,27 @@ function PaymentStatusContent() {
 
   return (
     <CenteredLayout maxWidth="max-w-lg">
-      <Card className="border-destructive/50">
+      <Card className="border-destructive/30 shadow-none">
         <CardHeader className="text-center">
-          <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
-            <XCircle className="w-8 h-8 text-red-600" />
+          <div className="mx-auto w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mb-3">
+            <XCircle className="w-7 h-7 text-red-600" />
           </div>
-          <CardTitle className="text-2xl text-red-600">Payment Failed</CardTitle>
+          <CardTitle className="text-xl text-red-600">Payment failed</CardTitle>
         </CardHeader>
-        <CardContent className="text-center space-y-4">
-          <p className="text-lg font-medium">{message}</p>
-          <p className="text-sm text-muted-foreground">
-            We couldn&apos;t process your payment. Please try again or use a different payment method.
+        <CardContent className="text-center space-y-3">
+          <p className="text-sm font-medium">{message}</p>
+          <p className="text-xs text-muted-foreground">
+            Please try again or use a different payment method.
           </p>
         </CardContent>
-        <CardFooter className="flex flex-col space-y-3">
-          <Button className="w-full" onClick={() => router.push('/payment')}>
+        <CardFooter className="flex flex-col gap-2">
+          <Button className="w-full h-11" onClick={() => router.push('/payment')}>
             <RefreshCcw className="w-4 h-4 mr-2" />
-            Try Again
+            Try again
           </Button>
-          <Button variant="outline" className="w-full" onClick={() => router.push('/')}>
+          <Button variant="outline" className="w-full h-11" onClick={() => router.push('/')}>
             <Home className="w-4 h-4 mr-2" />
-            Return to Home
+            Return home
           </Button>
         </CardFooter>
       </Card>
@@ -239,8 +238,8 @@ export default function PaymentStatusPage() {
         fallback={
           <CenteredLayout maxWidth="max-w-md">
             <div className="flex flex-col items-center justify-center space-y-4 p-8">
-              <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-              <h2 className="text-xl font-semibold">Loading...</h2>
+              <div className="w-10 h-10 border-3 border-primary border-t-transparent rounded-full animate-spin" />
+              <h2 className="text-lg font-semibold">Loading...</h2>
             </div>
           </CenteredLayout>
         }

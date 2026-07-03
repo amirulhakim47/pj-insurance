@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { PageLayout, Container, StepIndicator } from '@/components/ui/layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ArrowRight, User } from 'lucide-react';
+import { ArrowLeft, ArrowRight, User, Phone, MapPin } from 'lucide-react';
 import { customerDetailsSchema, type CustomerDetailsData } from '@/lib/validations';
 import type { InsuranceFormData } from '@/types';
 import type { VehicleDetailsResponse } from '@/types/allianz';
@@ -44,6 +44,9 @@ function extractGenderFromNRIC(nric: string): 'M' | 'F' {
   const lastDigit = parseInt(digits[digits.length - 1], 10);
   return lastDigit % 2 === 0 ? 'F' : 'M';
 }
+
+const inputClass = 'mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1';
+const readonlyClass = 'mt-1 w-full rounded-lg border border-input bg-muted/50 px-3 py-2 text-sm';
 
 export default function CustomerDetailsPage() {
   const router = useRouter();
@@ -128,80 +131,65 @@ export default function CustomerDetailsPage() {
 
   return (
     <PageLayout>
-      <Container className="py-8">
+      <Container className="py-8 sm:py-10">
         <StepIndicator steps={steps} currentStep={2} />
 
         <div className="max-w-2xl mx-auto space-y-6">
           <div className="text-center space-y-2">
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-              Policyholder Details
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+              Policyholder details
             </h1>
             <p className="text-sm text-muted-foreground">
-              Please confirm your personal details for the insurance policy.
+              Confirm your personal details for the insurance policy.
             </p>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             {/* Personal Information */}
-            <Card>
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center text-base">
+            <Card className="border-border/60 shadow-none">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center text-sm font-semibold">
                   <User className="w-4 h-4 mr-2 text-primary" />
-                  Personal Information
+                  Personal information
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Full Name */}
                 <div>
                   <label className="text-sm font-medium" htmlFor="fullName">Name as per ID *</label>
                   <input
                     id="fullName"
                     {...register('fullName')}
-                    className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm uppercase"
+                    className={`${inputClass} uppercase`}
                     placeholder="FULL NAME AS PER IC"
                   />
-                  {errors.fullName && <p className="text-xs text-red-500 mt-1">{errors.fullName.message}</p>}
+                  {errors.fullName && <p className="text-xs text-destructive mt-1">{errors.fullName.message}</p>}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  {/* ID Type */}
                   <div>
                     <label className="text-sm font-medium" htmlFor="identityType">ID Type</label>
-                    <input
-                      id="identityType"
-                      {...register('identityType')}
-                      readOnly
-                      className="mt-1 w-full rounded-md border border-input bg-muted px-3 py-2 text-sm"
-                    />
+                    <input id="identityType" {...register('identityType')} readOnly className={readonlyClass} />
                   </div>
-                  {/* ID Number */}
                   <div>
                     <label className="text-sm font-medium" htmlFor="identityNumber">ID Number</label>
-                    <input
-                      id="identityNumber"
-                      {...register('identityNumber')}
-                      readOnly
-                      className="mt-1 w-full rounded-md border border-input bg-muted px-3 py-2 text-sm uppercase"
-                    />
+                    <input id="identityNumber" {...register('identityNumber')} readOnly className={`${readonlyClass} uppercase`} />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  {/* Nationality */}
                   <div>
                     <label className="text-sm font-medium" htmlFor="nationality">Nationality *</label>
                     <select
                       id="nationality"
                       {...register('nationality')}
                       disabled={isNRIC}
-                      className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:bg-muted"
+                      className={isNRIC ? readonlyClass : inputClass}
                     >
                       {NATIONALITY_OPTIONS.map((n) => (
                         <option key={n} value={n}>{n}</option>
                       ))}
                     </select>
                   </div>
-                  {/* Date of Birth */}
                   <div>
                     <label className="text-sm font-medium" htmlFor="dateOfBirth">Date of Birth *</label>
                     <input
@@ -209,59 +197,52 @@ export default function CustomerDetailsPage() {
                       type="date"
                       {...register('dateOfBirth')}
                       readOnly={isNRIC}
-                      className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm read-only:bg-muted"
+                      className={isNRIC ? readonlyClass : inputClass}
                     />
-                    {errors.dateOfBirth && <p className="text-xs text-red-500 mt-1">{errors.dateOfBirth.message}</p>}
+                    {errors.dateOfBirth && <p className="text-xs text-destructive mt-1">{errors.dateOfBirth.message}</p>}
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  {/* Gender */}
                   <div>
                     <label className="text-sm font-medium" htmlFor="gender">Gender *</label>
                     <select
                       id="gender"
                       {...register('gender')}
                       disabled={isNRIC}
-                      className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:bg-muted"
+                      className={isNRIC ? readonlyClass : inputClass}
                     >
                       <option value="M">Male</option>
                       <option value="F">Female</option>
                       {formData.customerType === 'company' && <option value="C">Company</option>}
                     </select>
                   </div>
-                  {/* Marital Status */}
                   <div>
                     <label className="text-sm font-medium" htmlFor="maritalStatus">Marital Status *</label>
-                    <select
-                      id="maritalStatus"
-                      {...register('maritalStatus')}
-                      className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    >
+                    <select id="maritalStatus" {...register('maritalStatus')} className={inputClass}>
                       {MARITAL_STATUS_OPTIONS.map((opt) => (
                         <option key={opt.value} value={opt.value}>{opt.label}</option>
                       ))}
                     </select>
-                    {errors.maritalStatus && <p className="text-xs text-red-500 mt-1">{errors.maritalStatus.message}</p>}
+                    {errors.maritalStatus && <p className="text-xs text-destructive mt-1">{errors.maritalStatus.message}</p>}
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Contact Information */}
-            <Card>
-              <CardHeader className="pb-4">
-                <CardTitle className="text-base">Contact Information</CardTitle>
+            {/* Contact */}
+            <Card className="border-border/60 shadow-none">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center text-sm font-semibold">
+                  <Phone className="w-4 h-4 mr-2 text-primary" />
+                  Contact information
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Mobile */}
                 <div>
                   <label className="text-sm font-medium">Mobile Number *</label>
-                  <div className="grid grid-cols-[140px_1fr] gap-2 mt-1">
-                    <select
-                      {...register('mobilePrefix')}
-                      className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    >
+                  <div className="grid grid-cols-[130px_1fr] gap-2 mt-1">
+                    <select {...register('mobilePrefix')} className={inputClass.replace('mt-1 ', '')}>
                       {MOBILE_PREFIXES.map((p) => (
                         <option key={p} value={p}>{p.replace('60', '+60')}</option>
                       ))}
@@ -269,116 +250,80 @@ export default function CustomerDetailsPage() {
                     <input
                       {...register('mobileNumber')}
                       placeholder="12345678"
-                      className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      className={inputClass.replace('mt-1 ', '')}
                     />
                   </div>
-                  {errors.mobilePrefix && <p className="text-xs text-red-500 mt-1">{errors.mobilePrefix.message}</p>}
-                  {errors.mobileNumber && <p className="text-xs text-red-500 mt-1">{errors.mobileNumber.message}</p>}
+                  {errors.mobilePrefix && <p className="text-xs text-destructive mt-1">{errors.mobilePrefix.message}</p>}
+                  {errors.mobileNumber && <p className="text-xs text-destructive mt-1">{errors.mobileNumber.message}</p>}
                 </div>
 
-                {/* Email */}
                 <div>
                   <label className="text-sm font-medium" htmlFor="email">Email Address *</label>
-                  <input
-                    id="email"
-                    type="email"
-                    {...register('email')}
-                    className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  />
-                  {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email.message}</p>}
+                  <input id="email" type="email" {...register('email')} className={inputClass} />
+                  {errors.email && <p className="text-xs text-destructive mt-1">{errors.email.message}</p>}
                 </div>
               </CardContent>
             </Card>
 
             {/* Address */}
-            <Card>
-              <CardHeader className="pb-4">
-                <CardTitle className="text-base">Address</CardTitle>
+            <Card className="border-border/60 shadow-none">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center text-sm font-semibold">
+                  <MapPin className="w-4 h-4 mr-2 text-primary" />
+                  Address
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
                   <label className="text-sm font-medium" htmlFor="addressLine1">Address Line 1 *</label>
-                  <input
-                    id="addressLine1"
-                    {...register('addressLine1')}
-                    className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm uppercase"
-                    placeholder="STREET ADDRESS"
-                    maxLength={100}
-                  />
-                  {errors.addressLine1 && <p className="text-xs text-red-500 mt-1">{errors.addressLine1.message}</p>}
+                  <input id="addressLine1" {...register('addressLine1')} className={`${inputClass} uppercase`} placeholder="STREET ADDRESS" maxLength={100} />
+                  {errors.addressLine1 && <p className="text-xs text-destructive mt-1">{errors.addressLine1.message}</p>}
                 </div>
                 <div>
                   <label className="text-sm font-medium" htmlFor="addressLine2">Address Line 2</label>
-                  <input
-                    id="addressLine2"
-                    {...register('addressLine2')}
-                    className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm uppercase"
-                    maxLength={100}
-                  />
+                  <input id="addressLine2" {...register('addressLine2')} className={`${inputClass} uppercase`} maxLength={100} />
                 </div>
                 <div>
                   <label className="text-sm font-medium" htmlFor="addressLine3">Address Line 3</label>
-                  <input
-                    id="addressLine3"
-                    {...register('addressLine3')}
-                    className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm uppercase"
-                    maxLength={100}
-                  />
+                  <input id="addressLine3" {...register('addressLine3')} className={`${inputClass} uppercase`} maxLength={100} />
                 </div>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-3 gap-3">
                   <div>
                     <label className="text-sm font-medium" htmlFor="postcode">Postcode *</label>
-                    <input
-                      id="postcode"
-                      {...register('postcode')}
-                      readOnly
-                      className="mt-1 w-full rounded-md border border-input bg-muted px-3 py-2 text-sm"
-                    />
+                    <input id="postcode" {...register('postcode')} readOnly className={readonlyClass} />
                   </div>
                   <div>
                     <label className="text-sm font-medium" htmlFor="city">City</label>
-                    <input
-                      id="city"
-                      {...register('city')}
-                      className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      placeholder="City"
-                    />
+                    <input id="city" {...register('city')} className={inputClass} placeholder="City" />
                   </div>
                   <div>
                     <label className="text-sm font-medium" htmlFor="state">State</label>
-                    <input
-                      id="state"
-                      {...register('state')}
-                      className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      placeholder="State"
-                    />
+                    <input id="state" {...register('state')} className={inputClass} placeholder="State" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Vehicle Summary (read-only) */}
+            {/* Vehicle summary */}
             {vehicleDetails && (
-              <Card className="bg-muted/30">
-                <CardContent className="py-4">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Vehicle</p>
-                  <p className="text-sm font-semibold">
-                    {vehicleDetails.vehicleLicenseId} - {vehicleDetails.vehicleMake} {vehicleDetails.vehicleModelDesc || vehicleDetails.vehicleModel}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {vehicleDetails.yearOfManufacture} | {vehicleDetails.vehicleEngineCC} CC | NCD {vehicleDetails.ncdPercentage}%
-                  </p>
-                </CardContent>
-              </Card>
+              <div className="bg-muted/30 rounded-xl p-4 border border-border/40">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Vehicle</p>
+                <p className="text-sm font-semibold">
+                  {vehicleDetails.vehicleLicenseId} — {vehicleDetails.vehicleMake} {vehicleDetails.vehicleModelDesc || vehicleDetails.vehicleModel}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {vehicleDetails.yearOfManufacture} | {vehicleDetails.vehicleEngineCC} CC | NCD {vehicleDetails.ncdPercentage}%
+                </p>
+              </div>
             )}
 
             {/* Actions */}
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => router.back()}
-                className="sm:w-auto"
+                className="sm:w-auto h-11"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back
@@ -388,7 +333,7 @@ export default function CustomerDetailsPage() {
                 disabled={isSubmitting}
                 className="sm:w-auto h-12 px-8 text-base font-semibold"
               >
-                Proceed to Payment
+                Proceed to payment
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </div>

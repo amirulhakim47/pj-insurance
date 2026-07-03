@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { PageLayout, Container, StepIndicator } from '@/components/ui/layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, CreditCard, Check, Shield, Plus, Minus, Car, Info, FileText, ExternalLink } from 'lucide-react';
+import { ArrowLeft, CreditCard, Check, Shield, Car, Info, FileText, ExternalLink } from 'lucide-react';
 import { generateQuote, getLOV, checkUBB, updateQuote } from '@/lib/allianz-api';
 import type { InsuranceFormData } from '@/types';
 import type {
@@ -144,10 +144,8 @@ function ResultsPage() {
   const [selectedAddons, setSelectedAddons] = React.useState<Set<string>>(new Set());
   const [error, setError] = React.useState<string | null>(null);
 
-  // Add-on input state for covers that need user input
   const [addonInputs, setAddonInputs] = React.useState<Record<string, { sumInsured?: number; cartDay?: string; cartAmount?: string }>>({});
 
-  // AV (Agreed Value) state
   const [siBasis, setSiBasis] = React.useState<'MV' | 'AV'>('MV');
   const [avVariants, setAvVariants] = React.useState<AVVariantItem[]>([]);
   const [selectedAvVariant, setSelectedAvVariant] = React.useState<AVVariantItem | null>(null);
@@ -192,14 +190,13 @@ function ResultsPage() {
     }
   }, [router, isDemo]);
 
-  // Fetch AV variants when vehicle details are available
   React.useEffect(() => {
     if (!vehicleDetails || isDemo) return;
 
     const fetchAvVariants = async () => {
       setIsLoadingAv(true);
       try {
-        const region = vehicleDetails.insCode ? 'W' : 'W'; // Default West Malaysia
+        const region = 'W';
         const result = await getLOV<{ VariantGrp: AVVariantItem[] }>(
           'avVariant',
           {
@@ -249,7 +246,6 @@ function ResultsPage() {
         await new Promise((r) => setTimeout(r, 800));
         result = DEMO_QUOTATION;
       } else {
-        // UBB Check 2: Claims + Recon + ODM
         const noOfClaims = sessionStorage.getItem('allianz_noOfClaims') || '0';
         const reconInd = isReconditioned ? 'Y' : 'N';
 
@@ -391,7 +387,6 @@ function ResultsPage() {
     }
     setSelectedAddons(newSelected);
 
-    // Call Update Quotation API
     setIsUpdatingQuote(true);
     try {
       const additionalCover = quotation.additionalCover
@@ -441,38 +436,38 @@ function ResultsPage() {
 
   return (
     <PageLayout>
-      <Container className="py-8">
+      <Container className="py-8 sm:py-10">
         <StepIndicator steps={steps} currentStep={2} />
 
         <div className="space-y-8">
           {/* Header */}
-          <div className="text-center space-y-3">
-            <h1 className="text-3xl sm:text-4xl font-bold text-foreground">
-              {quotation ? 'Your Insurance Quote' : 'Confirm Your Vehicle'}
+          <div className="text-center space-y-2">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+              {quotation ? 'Your insurance quote' : 'Confirm your vehicle'}
             </h1>
-            <p className="text-base text-muted-foreground max-w-xl mx-auto">
+            <p className="text-sm text-muted-foreground max-w-lg mx-auto">
               {quotation
-                ? 'Review your premium breakdown and customize your coverage below.'
+                ? 'Review your premium breakdown and customize coverage below.'
                 : vehicleDetails
-                  ? 'We found your vehicle. Please confirm the variant that matches yours to get an accurate quote.'
+                  ? 'We found your vehicle. Confirm the variant that matches yours.'
                   : 'Loading vehicle details...'}
             </p>
           </div>
 
-          {/* Vehicle Info Summary */}
+          {/* Vehicle Info */}
           {vehicleDetails && (
-            <Card className="max-w-lg mx-auto">
+            <Card className="max-w-lg mx-auto border-border/60 shadow-none">
               <CardHeader className="pb-3">
-                <CardTitle className="flex items-center text-base">
-                  <Car className="w-5 h-5 mr-2 text-primary" />
+                <CardTitle className="flex items-center text-sm font-semibold">
+                  <Car className="w-4 h-4 mr-2 text-primary" />
                   {vehicleDetails.vehicleMake} {vehicleDetails.vehicleModelDesc || vehicleDetails.vehicleModel}
-                  <span className="ml-auto text-sm font-normal text-muted-foreground">
+                  <span className="ml-auto text-xs font-normal text-muted-foreground">
                     {vehicleDetails.yearOfManufacture}
                   </span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
                   <div>
                     <span className="text-muted-foreground text-xs">Plate Number</span>
                     <p className="font-semibold">{vehicleDetails.vehicleLicenseId}</p>
@@ -489,9 +484,9 @@ function ResultsPage() {
                     <span className="text-muted-foreground text-xs">Coverage Type</span>
                     <p className="font-semibold">{vehicleDetails.coverType || 'Comprehensive'}</p>
                   </div>
-                  <div className="col-span-2 pt-2 mt-2 border-t border-border">
+                  <div className="col-span-2 pt-2 mt-1 border-t border-border/60">
                     <span className="text-muted-foreground text-xs">Coverage Period</span>
-                    <p className="font-medium">{vehicleDetails.polEffectiveDate} to {vehicleDetails.polExpiryDate}</p>
+                    <p className="font-medium text-sm">{vehicleDetails.polEffectiveDate} to {vehicleDetails.polExpiryDate}</p>
                   </div>
                   <div className="col-span-2">
                     <span className="text-muted-foreground text-xs">Current Insurer</span>
@@ -502,79 +497,69 @@ function ResultsPage() {
             </Card>
           )}
 
-          {/* Product Documents (BNM Requirement - PDS prominently displayed) */}
+          {/* Product Documents */}
           {vehicleDetails && (
             <div className="max-w-lg mx-auto">
-              <Card className="border-primary/20 bg-primary/5">
-                <CardContent className="py-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <FileText className="w-4 h-4 text-primary" />
-                    <span className="text-sm font-semibold">Important Documents</span>
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <a
-                      href="/docs/allianz-motor-pds.pdf"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-xs text-primary hover:underline font-medium"
-                    >
-                      <FileText className="w-3.5 h-3.5" />
-                      Product Disclosure Sheet (PDS)
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                    <a
-                      href="https://www.allianz.com.my/motor-comprehensive-insurance"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-xs text-primary hover:underline font-medium"
-                    >
-                      <FileText className="w-3.5 h-3.5" />
-                      Policy Wording
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-xs">
+                <a
+                  href="/docs/allianz-motor-pds.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 text-primary hover:underline font-medium"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  Product Disclosure Sheet
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+                <a
+                  href="https://www.allianz.com.my/motor-comprehensive-insurance"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 text-primary hover:underline font-medium"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  Policy Wording
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
             </div>
           )}
 
-          {/* SI Basis Toggle & Reconditioned Declaration */}
+          {/* SI Basis & Reconditioned */}
           {vehicleDetails && !quotation && (
             <div className="max-w-2xl mx-auto space-y-4">
-              {/* SI Basis Toggle */}
               {avAvailable && !isLoadingAv && (
                 <div className="space-y-3">
                   <div className="text-center">
-                    <h3 className="font-semibold text-base">Sum Insured Basis</h3>
-                    <p className="text-xs text-muted-foreground">Choose how your vehicle is valued for coverage.</p>
+                    <h3 className="font-semibold text-sm">Sum insured basis</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">Choose how your vehicle is valued for coverage.</p>
                   </div>
                   <div className="flex justify-center gap-2">
                     <button
                       onClick={() => { setSiBasis('MV'); setQuotation(null); }}
-                      className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
+                      className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors ${
                         siBasis === 'MV'
-                          ? 'bg-primary text-primary-foreground shadow-md'
-                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted text-muted-foreground hover:text-foreground'
                       }`}
                     >
-                      Market Value (MV)
+                      Market Value
                     </button>
                     <button
                       onClick={() => { setSiBasis('AV'); setQuotation(null); }}
                       disabled={isReconditioned === true}
-                      className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
+                      className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors ${
                         siBasis === 'AV'
-                          ? 'bg-primary text-primary-foreground shadow-md'
-                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted text-muted-foreground hover:text-foreground'
                       } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
-                      Agreed Value (AV)
+                      Agreed Value
                     </button>
                   </div>
 
-                  {/* Reconditioned Car Declaration */}
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                    <p className="text-xs font-medium text-amber-900 mb-2">Is your vehicle a reconditioned car?</p>
+                  <div className="bg-amber-50 border border-amber-200/80 rounded-xl p-3">
+                    <p className="text-xs font-medium text-amber-900 mb-2">Is your vehicle reconditioned?</p>
                     <div className="flex gap-4">
                       <label className="flex items-center gap-2 text-sm cursor-pointer">
                         <input
@@ -599,7 +584,7 @@ function ResultsPage() {
                     </div>
                     {isReconditioned === true && (
                       <p className="text-xs text-amber-700 mt-2">
-                        Reconditioned vehicles are only eligible for Market Value (MV) basis.
+                        Reconditioned vehicles are only eligible for Market Value basis.
                       </p>
                     )}
                   </div>
@@ -610,10 +595,8 @@ function ResultsPage() {
               {siBasis === 'AV' && avVariants.length > 0 && (
                 <div className="space-y-3">
                   <div className="text-center space-y-1">
-                    <h3 className="font-semibold text-lg">Select Agreed Value Variant</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Choose the variant and sum insured for your vehicle.
-                    </p>
+                    <h3 className="font-semibold text-base">Select agreed value variant</h3>
+                    <p className="text-xs text-muted-foreground">Choose the variant and sum insured.</p>
                   </div>
                   <div className="space-y-2">
                     {avVariants.map((av) => {
@@ -622,18 +605,16 @@ function ResultsPage() {
                         <button
                           key={av.AvCode}
                           onClick={() => setSelectedAvVariant(av)}
-                          className={`w-full text-left p-3 rounded-xl border-2 transition-all ${
+                          className={`w-full text-left p-3.5 rounded-xl border-2 transition-colors ${
                             isSelected
-                              ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
-                              : 'border-border hover:border-primary/40 hover:bg-muted/30'
+                              ? 'border-primary bg-primary/5'
+                              : 'border-border/60 hover:border-primary/40'
                           }`}
                         >
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="font-medium text-sm">{av.Variant}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {av.VehicleEngineCC} CC | {av.MakeYear}
-                              </p>
+                              <p className="text-xs text-muted-foreground">{av.VehicleEngineCC} CC | {av.MakeYear}</p>
                             </div>
                             <div className="text-right">
                               <p className="font-bold text-base">RM {parseFloat(av.SumInsured).toLocaleString('en-MY')}</p>
@@ -649,18 +630,15 @@ function ResultsPage() {
                     <Button
                       onClick={handleGenerateQuote}
                       disabled={!selectedAvVariant || isLoadingQuote}
-                      className="h-12 px-8 text-lg font-semibold"
+                      className="h-12 px-8 text-base font-semibold"
                     >
                       {isLoadingQuote ? (
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center gap-2">
                           <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          <span>Calculating Premium...</span>
+                          <span>Calculating...</span>
                         </div>
                       ) : (
-                        <>
-                          <Shield className="w-5 h-5 mr-2" />
-                          Get My Quote (AV)
-                        </>
+                        'Get my quote'
                       )}
                     </Button>
                   </div>
@@ -669,17 +647,17 @@ function ResultsPage() {
             </div>
           )}
 
-          {/* NVIC Variant Selection (Market Value) */}
+          {/* NVIC Variant Selection (MV) */}
           {vehicleDetails && !quotation && siBasis === 'MV' && (
             <div className="max-w-2xl mx-auto space-y-4">
               <div className="text-center space-y-1">
-                <h3 className="font-semibold text-lg">Which variant do you own?</h3>
-                <p className="text-sm text-muted-foreground">
-                  The market value determines your sum insured &mdash; the maximum payout if your vehicle is a total loss.
+                <h3 className="font-semibold text-base">Which variant do you own?</h3>
+                <p className="text-xs text-muted-foreground">
+                  Market value determines your sum insured — the maximum payout for total loss.
                 </p>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {vehicleDetails.nvicList
                   ?.slice()
                   .sort((a, b) => b.vehicleMarketValue - a.vehicleMarketValue)
@@ -692,26 +670,26 @@ function ResultsPage() {
                       <button
                         key={nvic.nvic}
                         onClick={() => handleNvicSelect(nvic)}
-                        className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
+                        className={`w-full text-left p-4 rounded-xl border-2 transition-colors ${
                           isSelected
-                            ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
-                            : 'border-border hover:border-primary/40 hover:bg-muted/30'
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border/60 hover:border-primary/40'
                         }`}
                       >
                         <div className="flex items-center gap-4">
-                          <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${
+                          <div className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold ${
                             isSelected
                               ? 'bg-primary text-primary-foreground'
                               : 'bg-muted text-muted-foreground'
                           }`}>
-                            {isSelected ? <Check className="w-5 h-5" /> : trimName.substring(0, 2)}
+                            {isSelected ? <Check className="w-4 h-4" /> : trimName.substring(0, 2)}
                           </div>
 
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <p className="font-semibold text-sm">{trimName} Variant</p>
                               {nvic.recommendInd === 'Y' && (
-                                <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-semibold rounded-full uppercase tracking-wide">
+                                <span className="px-1.5 py-0.5 bg-green-100 text-green-700 text-[10px] font-semibold rounded uppercase tracking-wide">
                                   Best Match
                                 </span>
                               )}
@@ -719,18 +697,13 @@ function ResultsPage() {
                             <p className="text-xs text-muted-foreground mt-0.5 truncate">
                               {nvic.vehicleVariant}
                             </p>
-                            <p className="text-[10px] text-muted-foreground/70 mt-0.5">
-                              NVIC: {nvic.nvic}
-                              {nvic.vehicleEngineCC && ` \u00B7 ${nvic.vehicleEngineCC} CC`}
-                              {nvic.engineType && ` \u00B7 ${nvic.engineType}`}
-                            </p>
                           </div>
 
                           <div className="text-right flex-shrink-0">
-                            <p className="font-bold text-base text-foreground">
+                            <p className="font-bold text-sm text-foreground">
                               RM {nvic.vehicleMarketValue.toLocaleString('en-MY', { minimumFractionDigits: 0 })}
                             </p>
-                            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Agreed Value</p>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Market Value</p>
                           </div>
                         </div>
                       </button>
@@ -741,7 +714,7 @@ function ResultsPage() {
               <div className="flex items-start gap-2 px-3 py-2.5 bg-muted/50 rounded-lg">
                 <Info className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Not sure which variant? Check your vehicle registration card (grant) or previous insurance policy for the exact model specification.
+                  Not sure which variant? Check your vehicle registration card (grant) or previous insurance policy.
                 </p>
               </div>
 
@@ -749,18 +722,15 @@ function ResultsPage() {
                 <Button
                   onClick={handleGenerateQuote}
                   disabled={!selectedNvic || isLoadingQuote}
-                  className="h-12 px-8 text-lg font-semibold"
+                  className="h-12 px-8 text-base font-semibold"
                 >
                   {isLoadingQuote ? (
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center gap-2">
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>Calculating Premium...</span>
+                      <span>Calculating...</span>
                     </div>
                   ) : (
-                    <>
-                      <Shield className="w-5 h-5 mr-2" />
-                      Get My Quote
-                    </>
+                    'Get my quote'
                   )}
                 </Button>
               </div>
@@ -770,31 +740,31 @@ function ResultsPage() {
           {/* Quotation Display */}
           {quotation && (
             <div className="max-w-3xl mx-auto space-y-6">
-              {/* Total Premium Hero */}
-              <div className="text-center py-6 bg-primary/5 rounded-2xl border border-primary/10">
-                <p className="text-sm text-muted-foreground mb-1">Your Annual Premium</p>
-                <p className="text-4xl font-bold text-primary transition-all">
+              {/* Total Premium */}
+              <div className="text-center py-8 bg-muted/30 rounded-2xl border border-border/40">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Annual Premium</p>
+                <p className="text-4xl font-bold text-foreground tracking-tight transition-all">
                   RM {totalWithAddons.toFixed(2)}
                 </p>
                 {addonsTotal > 0 && (
-                  <p className="text-xs text-primary/70 mt-1">
-                    Base: RM {quotation.premium.premiumDueRounded.toFixed(2)} + Add-ons: RM {addonsTotal.toFixed(2)}
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    Base RM {quotation.premium.premiumDueRounded.toFixed(2)} + Add-ons RM {addonsTotal.toFixed(2)}
                   </p>
                 )}
                 <p className="text-xs text-muted-foreground mt-2">
-                  Comprehensive cover &middot; {selectedNvic?.vehicleVariant?.split(' ')[0]} variant &middot; Sum insured RM {selectedNvic?.vehicleMarketValue.toLocaleString('en-MY')}
+                  Comprehensive &middot; {selectedNvic?.vehicleVariant?.split(' ')[0]} variant &middot; Sum insured RM {selectedNvic?.vehicleMarketValue.toLocaleString('en-MY')}
                 </p>
               </div>
 
               {/* Premium Breakdown */}
-              <Card>
+              <Card className="border-border/60 shadow-none">
                 <CardHeader>
-                  <CardTitle className="flex items-center text-base">
+                  <CardTitle className="flex items-center text-sm font-semibold">
                     <Shield className="w-4 h-4 mr-2 text-primary" />
-                    Premium Breakdown
+                    Premium breakdown
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2.5">
+                <CardContent className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Basic Premium</span>
                     <span>RM {quotation.premium.basicPremium.toFixed(2)}</span>
@@ -827,8 +797,8 @@ function ResultsPage() {
                       <span>+ RM {addonsTotal.toFixed(2)}</span>
                     </div>
                   )}
-                  <div className="pt-3 border-t flex justify-between items-center">
-                    <span className="font-bold">Total</span>
+                  <div className="pt-3 border-t border-border/60 flex justify-between items-center">
+                    <span className="font-bold text-sm">Total</span>
                     <span className="font-bold text-lg text-primary">
                       RM {totalWithAddons.toFixed(2)}
                     </span>
@@ -840,7 +810,7 @@ function ResultsPage() {
               {quotation.additionalCover?.length > 0 && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-base">Enhance Your Coverage</h3>
+                    <h3 className="font-semibold text-sm">Enhance your coverage</h3>
                     <span className="text-xs text-muted-foreground">Optional add-ons</span>
                   </div>
                   {quotation.additionalCover
@@ -852,19 +822,19 @@ function ResultsPage() {
                           key={cover.coverCode}
                           onClick={() => handleToggleAddon(cover)}
                           disabled={isUpdatingQuote}
-                          className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
+                          className={`w-full text-left p-4 rounded-xl border-2 transition-colors ${
                             isSelected
                               ? 'border-primary bg-primary/5'
-                              : 'border-border hover:border-primary/30'
+                              : 'border-border/60 hover:border-primary/30'
                           } ${isUpdatingQuote ? 'opacity-60' : ''}`}
                         >
                           <div className="flex items-start gap-3">
-                            <div className={`flex-shrink-0 w-6 h-6 rounded-md border-2 flex items-center justify-center mt-0.5 transition-colors ${
+                            <div className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center mt-0.5 transition-colors ${
                               isSelected
                                 ? 'bg-primary border-primary'
                                 : 'border-muted-foreground/30'
                             }`}>
-                              {isSelected && <Check className="w-3.5 h-3.5 text-primary-foreground" />}
+                              {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
                             </div>
                             <div className="flex-1 min-w-0">
                               <span className="font-medium text-sm">{cover.coverName}</span>
@@ -873,7 +843,6 @@ function ResultsPage() {
                                   {cover.coverDescription}
                                 </p>
                               )}
-                              {/* Input fields for covers that require user input */}
                               {isSelected && cover.coverCode === '97A' && (
                                 <div className="mt-2" onClick={(e) => e.stopPropagation()}>
                                   <label className="text-xs text-muted-foreground">Windscreen Sum Insured (RM)</label>
@@ -884,7 +853,7 @@ function ResultsPage() {
                                     step={100}
                                     value={addonInputs[cover.coverCode]?.sumInsured || cover.coverSumInsured || 1000}
                                     onChange={(e) => handleAddonInputChange(cover.coverCode, 'sumInsured', e.target.value)}
-                                    className="mt-1 w-32 rounded border border-input px-2 py-1 text-xs"
+                                    className="mt-1 w-32 rounded-lg border border-input px-2 py-1 text-xs"
                                   />
                                 </div>
                               )}
@@ -898,7 +867,7 @@ function ResultsPage() {
                                       max={30}
                                       value={addonInputs[cover.coverCode]?.cartDay || '7'}
                                       onChange={(e) => handleAddonInputChange(cover.coverCode, 'cartDay', e.target.value)}
-                                      className="mt-1 w-16 rounded border border-input px-2 py-1 text-xs"
+                                      className="mt-1 w-16 rounded-lg border border-input px-2 py-1 text-xs"
                                     />
                                   </div>
                                   <div>
@@ -910,7 +879,7 @@ function ResultsPage() {
                                       step={50}
                                       value={addonInputs[cover.coverCode]?.cartAmount || '100'}
                                       onChange={(e) => handleAddonInputChange(cover.coverCode, 'cartAmount', e.target.value)}
-                                      className="mt-1 w-20 rounded border border-input px-2 py-1 text-xs"
+                                      className="mt-1 w-20 rounded-lg border border-input px-2 py-1 text-xs"
                                     />
                                   </div>
                                 </div>
@@ -928,15 +897,15 @@ function ResultsPage() {
                 </div>
               )}
 
-              {/* Error Display */}
+              {/* Error */}
               {error && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
                   <p className="text-red-700 text-sm">{error}</p>
                 </div>
               )}
 
-              {/* Action Buttons */}
-              <div className="sticky bottom-0 bg-background/95 backdrop-blur-sm border-t border-border -mx-4 px-4 py-4 sm:relative sm:border-0 sm:bg-transparent sm:backdrop-blur-none sm:mx-0 sm:px-0 sm:py-0">
+              {/* Actions */}
+              <div className="sticky bottom-0 bg-background/95 backdrop-blur-sm border-t border-border/60 -mx-5 px-5 py-4 sm:relative sm:border-0 sm:bg-transparent sm:backdrop-blur-none sm:mx-0 sm:px-0 sm:py-0">
                 <div className="flex flex-col sm:flex-row gap-3 justify-center items-center max-w-lg mx-auto">
                   <Button
                     variant="outline"
@@ -947,16 +916,16 @@ function ResultsPage() {
                     className="w-full sm:w-auto h-11"
                   >
                     <ArrowLeft className="w-4 h-4 mr-2" />
-                    Change Variant
+                    Change variant
                   </Button>
 
                   <Button
                     onClick={handleProceedToPayment}
                     disabled={!quotation}
-                    className="w-full sm:w-auto h-12 text-lg font-semibold shadow-lg transition-all duration-200 bg-primary hover:bg-primary/90 shadow-primary/25 hover:shadow-primary/40 hover:scale-[1.02]"
+                    className="w-full sm:w-auto h-12 text-base font-semibold"
                   >
-                    <CreditCard className="w-5 h-5 mr-2" />
-                    Proceed to Payment &middot; RM {totalWithAddons.toFixed(2)}
+                    <CreditCard className="w-4 h-4 mr-2" />
+                    Proceed &middot; RM {totalWithAddons.toFixed(2)}
                   </Button>
                 </div>
               </div>
@@ -966,12 +935,12 @@ function ResultsPage() {
           {/* No vehicle details fallback */}
           {!vehicleDetails && formData && (
             <div className="text-center space-y-4">
-              <p className="text-muted-foreground">
-                No vehicle details available. This may happen if the backend is not running.
+              <p className="text-sm text-muted-foreground">
+                No vehicle details available. The backend may not be running.
               </p>
               <Button variant="outline" onClick={() => router.push('/')}>
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Form
+                Back to form
               </Button>
             </div>
           )}

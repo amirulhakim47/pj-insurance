@@ -3,9 +3,8 @@
 import * as React from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { insuranceFormSchema, type InsuranceFormData } from '@/lib/validations';
-import { getHref } from '@/lib/utils';
 import { PageLayout, CenteredLayout, StepIndicator } from '@/components/ui/layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,7 +12,7 @@ import { RadioField, TextField, NRICField, PlateNumberField } from '@/components
 import { DataProtectionCard } from '@/components/ui/data-protection-card';
 import { PDPAConsent } from '@/components/ui/pdpa-consent';
 import { vehicleTypeOptions, customerTypeOptions } from '@/data/mockUserData';
-import { Car, Bike, Shield, FileText } from 'lucide-react';
+import { Car, Bike, FileText, ArrowRight } from 'lucide-react';
 
 const steps = ['Details', 'Loading', 'Results'];
 
@@ -38,10 +37,10 @@ const DEV_DEFAULTS: Partial<InsuranceFormData> = {
 
 export default function InsuranceForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const {
-    register,
     handleSubmit,
     setValue,
     control,
@@ -59,16 +58,19 @@ export default function InsuranceForm() {
     },
   });
 
+  React.useEffect(() => {
+    const plate = searchParams.get('plate');
+    if (plate) {
+      setValue('plateNumber', plate.toUpperCase(), { shouldValidate: true });
+    }
+  }, [searchParams, setValue]);
+
   const pdpaConsent = watch('pdpaConsent');
 
   const onSubmit = async (data: InsuranceFormData) => {
     setIsSubmitting(true);
-    
     try {
-      // Store form data in sessionStorage for the next page
       sessionStorage.setItem('insuranceFormData', JSON.stringify(data));
-      
-      // Navigate to loading page
       router.push('/loading');
     } catch (error) {
       console.error('Form submission error:', error);
@@ -79,28 +81,25 @@ export default function InsuranceForm() {
   return (
     <PageLayout>
       <CenteredLayout
-        title="Get Your Insurance Quote"
-        subtitle="Fill in your details to find the best insurance policies for you"
+        title="Get your insurance quote"
+        subtitle="Fill in your details to compare the best policies available"
         maxWidth="max-w-2xl"
       >
         <StepIndicator steps={steps} currentStep={0} />
-        
-        {/* Data Protection Card */}
+
         <div className="mb-6">
           <DataProtectionCard />
         </div>
-        
-        <Card className="shadow-lg">
-          <CardHeader className="text-center pb-6">
-            <CardTitle className="text-2xl font-bold text-foreground flex items-center justify-center space-x-2">
-              <Shield className="w-6 h-6 text-primary" />
-              <span>Insurance Details</span>
+
+        <Card className="border-border/60">
+          <CardHeader className="text-center pb-2">
+            <CardTitle className="text-xl font-semibold text-foreground">
+              Vehicle &amp; personal details
             </CardTitle>
           </CardHeader>
-          
+
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              {/* Full Name Input */}
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
               <Controller
                 name="fullName"
                 control={control}
@@ -117,7 +116,6 @@ export default function InsuranceForm() {
                 )}
               />
 
-              {/* Vehicle Type Selection */}
               <Controller
                 name="vehicleType"
                 control={control}
@@ -128,15 +126,15 @@ export default function InsuranceForm() {
                     options={vehicleTypeOptions.map(option => ({
                       value: option.value,
                       label: (
-                        <div className="flex items-center space-x-3">
+                        <div className="flex items-center gap-3">
                           {option.value === 'car' ? (
-                            <Car className="w-5 h-5 text-primary" />
+                            <Car className="w-4 h-4 text-primary" />
                           ) : (
-                            <Bike className="w-5 h-5 text-primary" />
+                            <Bike className="w-4 h-4 text-primary" />
                           )}
                           <div>
-                            <div className="font-medium">{option.label}</div>
-                            <div className="text-sm text-muted-foreground">{option.description}</div>
+                            <div className="font-medium text-sm">{option.label}</div>
+                            <div className="text-xs text-muted-foreground">{option.description}</div>
                           </div>
                         </div>
                       ),
@@ -150,19 +148,18 @@ export default function InsuranceForm() {
                 )}
               />
 
-              {/* Identity Type Selection */}
               <Controller
                 name="identityType"
                 control={control}
                 render={({ field }) => (
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <label className="text-sm font-medium text-foreground">
                       Identity Type <span className="text-destructive">*</span>
                     </label>
                     <select
                       value={field.value || 'NRIC'}
                       onChange={(e) => field.onChange(e.target.value)}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
                       <option value="NRIC">NRIC (National Registration Identity Card)</option>
                       <option value="OLD_IC">Old IC / Others</option>
@@ -177,7 +174,6 @@ export default function InsuranceForm() {
                 )}
               />
 
-              {/* NRIC Input */}
               <Controller
                 name="nric"
                 control={control}
@@ -193,7 +189,6 @@ export default function InsuranceForm() {
                 )}
               />
 
-              {/* Plate Number Input */}
               <Controller
                 name="plateNumber"
                 control={control}
@@ -209,44 +204,43 @@ export default function InsuranceForm() {
                 )}
               />
 
-              {/* Postcode Input */}
-              <Controller
-                name="postcode"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    label="Postcode"
-                    value={field.value || ''}
-                    onChange={(e) => field.onChange(e.target.value)}
-                    error={errors.postcode?.message}
-                    required
-                    placeholder="50450"
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    maxLength={5}
-                  />
-                )}
-              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Controller
+                  name="postcode"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      label="Postcode"
+                      value={field.value || ''}
+                      onChange={(e) => field.onChange(e.target.value)}
+                      error={errors.postcode?.message}
+                      required
+                      placeholder="50450"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={5}
+                    />
+                  )}
+                />
 
-              {/* Phone Number Input */}
-              <Controller
-                name="phoneNumber"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    label="Phone Number"
-                    value={field.value || ''}
-                    onChange={(e) => field.onChange(e.target.value)}
-                    error={errors.phoneNumber?.message}
-                    required
-                    placeholder="0123456789"
-                    type="tel"
-                  />
-                )}
-              />
+                <Controller
+                  name="phoneNumber"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      label="Phone Number"
+                      value={field.value || ''}
+                      onChange={(e) => field.onChange(e.target.value)}
+                      error={errors.phoneNumber?.message}
+                      required
+                      placeholder="0123456789"
+                      type="tel"
+                    />
+                  )}
+                />
+              </div>
 
-              {/* Email Input */}
               <Controller
                 name="email"
                 control={control}
@@ -263,7 +257,6 @@ export default function InsuranceForm() {
                 )}
               />
 
-              {/* Customer Type Selection */}
               <Controller
                 name="customerType"
                 control={control}
@@ -274,11 +267,11 @@ export default function InsuranceForm() {
                     options={customerTypeOptions.map(option => ({
                       value: option.value,
                       label: (
-                        <div className="flex items-center space-x-3">
-                          <FileText className="w-5 h-5 text-primary" />
+                        <div className="flex items-center gap-3">
+                          <FileText className="w-4 h-4 text-primary" />
                           <div>
-                            <div className="font-medium">{option.label}</div>
-                            <div className="text-sm text-muted-foreground">{option.description}</div>
+                            <div className="font-medium text-sm">{option.label}</div>
+                            <div className="text-xs text-muted-foreground">{option.description}</div>
                           </div>
                         </div>
                       ),
@@ -292,95 +285,71 @@ export default function InsuranceForm() {
                 )}
               />
 
-              {/* Additional Vehicle Information */}
-              <div className="space-y-4 pt-2 border-t border-border">
+              <div className="space-y-3 pt-3 border-t border-border/60">
                 <h3 className="text-sm font-semibold text-foreground">
-                  Additional Vehicle Information
+                  Additional vehicle information
                 </h3>
-                
-                {/* E-hailing Checkbox */}
+
                 <Controller
                   name="isEhailing"
                   control={control}
                   render={({ field }) => (
-                    <div className="flex items-start space-x-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors cursor-pointer">
-                      <div className="relative flex items-center justify-center mt-0.5 flex-shrink-0">
+                    <label
+                      htmlFor="isEhailing"
+                      className="flex items-center gap-3 p-3 rounded-lg border border-border/60 hover:bg-muted/50 transition-colors cursor-pointer"
+                    >
+                      <div className="relative flex items-center justify-center flex-shrink-0">
                         <input
                           type="checkbox"
                           id="isEhailing"
                           checked={field.value || false}
                           onChange={(e) => field.onChange(e.target.checked)}
-                          className="peer h-5 w-5 shrink-0 rounded border-2 border-foreground/30 bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 appearance-none cursor-pointer checked:bg-primary checked:border-primary hover:border-primary/50 transition-all duration-200 shadow-sm"
+                          className="peer h-4.5 w-4.5 shrink-0 rounded border-2 border-muted-foreground/30 bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 appearance-none cursor-pointer checked:bg-primary checked:border-primary transition-colors"
                         />
                         {field.value && (
-                          <svg
-                            className="absolute h-3.5 w-3.5 text-primary-foreground pointer-events-none"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={3}
-                              d="M5 13l4 4L19 7"
-                            />
+                          <svg className="absolute h-3 w-3 text-primary-foreground pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                           </svg>
                         )}
                       </div>
-                      <label
-                        htmlFor="isEhailing"
-                        className="text-sm leading-relaxed cursor-pointer select-none flex-1"
-                      >
-                        Is this vehicle used for e-hailing services (Grab, etc.)?
-                      </label>
-                    </div>
+                      <span className="text-sm select-none">
+                        Used for e-hailing (Grab, etc.)
+                      </span>
+                    </label>
                   )}
                 />
 
-                {/* Electric Vehicle Checkbox */}
                 <Controller
                   name="isElectricVehicle"
                   control={control}
                   render={({ field }) => (
-                    <div className="flex items-start space-x-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors cursor-pointer">
-                      <div className="relative flex items-center justify-center mt-0.5 flex-shrink-0">
+                    <label
+                      htmlFor="isElectricVehicle"
+                      className="flex items-center gap-3 p-3 rounded-lg border border-border/60 hover:bg-muted/50 transition-colors cursor-pointer"
+                    >
+                      <div className="relative flex items-center justify-center flex-shrink-0">
                         <input
                           type="checkbox"
                           id="isElectricVehicle"
                           checked={field.value || false}
                           onChange={(e) => field.onChange(e.target.checked)}
-                          className="peer h-5 w-5 shrink-0 rounded border-2 border-foreground/30 bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 appearance-none cursor-pointer checked:bg-primary checked:border-primary hover:border-primary/50 transition-all duration-200 shadow-sm"
+                          className="peer h-4.5 w-4.5 shrink-0 rounded border-2 border-muted-foreground/30 bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 appearance-none cursor-pointer checked:bg-primary checked:border-primary transition-colors"
                         />
                         {field.value && (
-                          <svg
-                            className="absolute h-3.5 w-3.5 text-primary-foreground pointer-events-none"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={3}
-                              d="M5 13l4 4L19 7"
-                            />
+                          <svg className="absolute h-3 w-3 text-primary-foreground pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                           </svg>
                         )}
                       </div>
-                      <label
-                        htmlFor="isElectricVehicle"
-                        className="text-sm leading-relaxed cursor-pointer select-none flex-1"
-                      >
-                        Is this an electric vehicle (EV)?
-                      </label>
-                    </div>
+                      <span className="text-sm select-none">
+                        Electric vehicle (EV)
+                      </span>
+                    </label>
                   )}
                 />
               </div>
 
-              {/* PDPA Consent */}
-              <div className="pt-4 border-t border-border">
+              <div className="pt-3 border-t border-border/60">
                 <Controller
                   name="pdpaConsent"
                   control={control}
@@ -394,20 +363,22 @@ export default function InsuranceForm() {
                 />
               </div>
 
-              {/* Submit Button */}
-              <div className="pt-6">
+              <div className="pt-4">
                 <Button
                   type="submit"
-                  className="w-full h-12 text-lg font-semibold"
+                  className="w-full h-12 text-base font-semibold"
                   disabled={!isValid || isSubmitting}
                 >
                   {isSubmitting ? (
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center gap-2">
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                       <span>Processing...</span>
                     </div>
                   ) : (
-                    'Get Insurance Quotes'
+                    <>
+                      Get insurance quotes
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </>
                   )}
                 </Button>
               </div>
@@ -415,12 +386,9 @@ export default function InsuranceForm() {
           </CardContent>
         </Card>
 
-        {/* Help Text */}
-        <div className="text-center text-sm text-muted-foreground">
-          <p>
-            Your information is secure and will only be used to provide insurance quotes.
-          </p>
-        </div>
+        <p className="text-center text-xs text-muted-foreground">
+          Your information is secure and will only be used to provide insurance quotes.
+        </p>
       </CenteredLayout>
     </PageLayout>
   );

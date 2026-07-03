@@ -42,7 +42,6 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 
-  /* Custom Orange Color Palette */
   --color-orange-50: oklch(0.98 0.005 45);
   --color-orange-100: oklch(0.96 0.01 45);
   --color-orange-200: oklch(0.92 0.02 45);
@@ -55,7 +54,6 @@
   --color-orange-900: oklch(0.25 0.15 45);
   --color-orange-950: oklch(0.15 0.10 45);
 
-  /* Typography Scale */
   --font-size-xs: 0.75rem;
   --font-size-sm: 0.875rem;
   --font-size-base: 1rem;
@@ -66,21 +64,18 @@
   --font-size-4xl: 2.25rem;
   --font-size-5xl: 3rem;
 
-  /* Line Heights */
   --line-height-tight: 1.25;
   --line-height-snug: 1.375;
   --line-height-normal: 1.5;
   --line-height-relaxed: 1.625;
   --line-height-loose: 2;
 
-  /* Letter Spacing */
   --letter-spacing-tighter: -0.05em;
   --letter-spacing-tight: -0.025em;
   --letter-spacing-normal: 0em;
   --letter-spacing-wide: 0.025em;
   --letter-spacing-wider: 0.05em;
 
-  /* Spacing Scale */
   --spacing-0: 0px;
   --spacing-1: 0.25rem;
   --spacing-2: 0.5rem;
@@ -96,7 +91,6 @@
   --spacing-24: 6rem;
   --spacing-32: 8rem;
 
-  /* Shadow System */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-base: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
@@ -105,14 +99,12 @@
   --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
   --shadow-inner: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
 
-  /* Border Widths */
   --border-width-0: 0px;
   --border-width-1: 1px;
   --border-width-2: 2px;
   --border-width-4: 4px;
   --border-width-8: 8px;
 
-  /* Transition Durations */
   --duration-75: 75ms;
   --duration-100: 100ms;
   --duration-150: 150ms;
@@ -122,7 +114,6 @@
   --duration-700: 700ms;
   --duration-1000: 1000ms;
 
-  /* Transition Timing Functions */
   --ease-linear: linear;
   --ease-in: cubic-bezier(0.4, 0, 1, 1);
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
@@ -131,73 +122,71 @@
 
 :root {
   --radius: 0.625rem;
-  /* Orange and White Color Scheme */
-  --background: oklch(1 0 0); /* Pure white */
-  --foreground: oklch(0.2 0 0); /* Dark gray for text */
-  --card: oklch(1 0 0); /* White cards */
-  --card-foreground: oklch(0.2 0 0); /* Dark text on cards */
-  --popover: oklch(1 0 0); /* White popovers */
-  --popover-foreground: oklch(0.2 0 0); /* Dark text on popovers */
-  --primary: oklch(0.65 0.18 45); /* Orange primary */
-  --primary-foreground: oklch(1 0 0); /* White text on orange */
-  --secondary: oklch(0.98 0.01 45); /* Very light orange */
-  --secondary-foreground: oklch(0.2 0 0); /* Dark text on light orange */
-  --muted: oklch(0.96 0.005 45); /* Subtle orange tint */
-  --muted-foreground: oklch(0.45 0 0); /* Medium gray */
-  --accent: oklch(0.75 0.15 45); /* Lighter orange accent */
-  --accent-foreground: oklch(1 0 0); /* White text on accent */
-  --destructive: oklch(0.577 0.245 27.325); /* Keep red for errors */
-  --border: oklch(0.92 0.01 45); /* Light orange border */
-  --input: oklch(0.98 0.005 45); /* Very light orange input bg */
-  --ring: oklch(0.65 0.18 45); /* Orange focus ring */
-  --chart-1: oklch(0.65 0.18 45); /* Orange */
-  --chart-2: oklch(0.75 0.15 45); /* Light orange */
-  --chart-3: oklch(0.55 0.20 45); /* Dark orange */
-  --chart-4: oklch(0.85 0.10 45); /* Very light orange */
-  --chart-5: oklch(0.45 0.22 45); /* Very dark orange */
-  --sidebar: oklch(0.98 0.01 45); /* Light orange sidebar */
-  --sidebar-foreground: oklch(0.2 0 0); /* Dark text */
-  --sidebar-primary: oklch(0.65 0.18 45); /* Orange primary */
-  --sidebar-primary-foreground: oklch(1 0 0); /* White text */
-  --sidebar-accent: oklch(0.96 0.005 45); /* Subtle orange */
-  --sidebar-accent-foreground: oklch(0.2 0 0); /* Dark text */
-  --sidebar-border: oklch(0.92 0.01 45); /* Light orange border */
-  --sidebar-ring: oklch(0.65 0.18 45); /* Orange ring */
+  --background: oklch(0.995 0 0);
+  --foreground: oklch(0.145 0.005 45);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0.005 45);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0.005 45);
+  --primary: oklch(0.65 0.18 45);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.97 0.008 45);
+  --secondary-foreground: oklch(0.25 0.02 45);
+  --muted: oklch(0.965 0.003 45);
+  --muted-foreground: oklch(0.48 0.01 45);
+  --accent: oklch(0.75 0.15 45);
+  --accent-foreground: oklch(1 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.925 0.005 45);
+  --input: oklch(0.925 0.005 45);
+  --ring: oklch(0.65 0.18 45);
+  --chart-1: oklch(0.65 0.18 45);
+  --chart-2: oklch(0.75 0.15 45);
+  --chart-3: oklch(0.55 0.20 45);
+  --chart-4: oklch(0.85 0.10 45);
+  --chart-5: oklch(0.45 0.22 45);
+  --sidebar: oklch(0.98 0.01 45);
+  --sidebar-foreground: oklch(0.2 0 0);
+  --sidebar-primary: oklch(0.65 0.18 45);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.96 0.005 45);
+  --sidebar-accent-foreground: oklch(0.2 0 0);
+  --sidebar-border: oklch(0.92 0.01 45);
+  --sidebar-ring: oklch(0.65 0.18 45);
 }
 
 .dark {
-  /* Dark Orange Theme */
-  --background: oklch(0.1 0 0); /* Very dark background */
-  --foreground: oklch(0.95 0.01 45); /* Light orange-tinted text */
-  --card: oklch(0.15 0.01 45); /* Dark orange-tinted cards */
-  --card-foreground: oklch(0.95 0.01 45); /* Light text on dark cards */
-  --popover: oklch(0.15 0.01 45); /* Dark popovers */
-  --popover-foreground: oklch(0.95 0.01 45); /* Light text on popovers */
-  --primary: oklch(0.75 0.15 45); /* Bright orange primary */
-  --primary-foreground: oklch(0.1 0 0); /* Dark text on bright orange */
-  --secondary: oklch(0.25 0.02 45); /* Dark orange secondary */
-  --secondary-foreground: oklch(0.95 0.01 45); /* Light text */
-  --muted: oklch(0.2 0.01 45); /* Muted dark orange */
-  --muted-foreground: oklch(0.7 0.01 45); /* Medium orange text */
-  --accent: oklch(0.3 0.03 45); /* Dark orange accent */
-  --accent-foreground: oklch(0.95 0.01 45); /* Light text on accent */
-  --destructive: oklch(0.704 0.191 22.216); /* Keep red for errors */
-  --border: oklch(0.25 0.02 45); /* Dark orange border */
-  --input: oklch(0.2 0.01 45); /* Dark orange input bg */
-  --ring: oklch(0.75 0.15 45); /* Bright orange focus ring */
-  --chart-1: oklch(0.75 0.15 45); /* Bright orange */
-  --chart-2: oklch(0.65 0.18 45); /* Medium orange */
-  --chart-3: oklch(0.85 0.12 45); /* Light orange */
-  --chart-4: oklch(0.55 0.20 45); /* Dark orange */
-  --chart-5: oklch(0.45 0.22 45); /* Very dark orange */
-  --sidebar: oklch(0.15 0.01 45); /* Dark orange sidebar */
-  --sidebar-foreground: oklch(0.95 0.01 45); /* Light text */
-  --sidebar-primary: oklch(0.75 0.15 45); /* Bright orange primary */
-  --sidebar-primary-foreground: oklch(0.1 0 0); /* Dark text */
-  --sidebar-accent: oklch(0.2 0.01 45); /* Muted dark orange */
-  --sidebar-accent-foreground: oklch(0.95 0.01 45); /* Light text */
-  --sidebar-border: oklch(0.25 0.02 45); /* Dark orange border */
-  --sidebar-ring: oklch(0.75 0.15 45); /* Bright orange ring */
+  --background: oklch(0.1 0 0);
+  --foreground: oklch(0.95 0.01 45);
+  --card: oklch(0.15 0.01 45);
+  --card-foreground: oklch(0.95 0.01 45);
+  --popover: oklch(0.15 0.01 45);
+  --popover-foreground: oklch(0.95 0.01 45);
+  --primary: oklch(0.75 0.15 45);
+  --primary-foreground: oklch(0.1 0 0);
+  --secondary: oklch(0.25 0.02 45);
+  --secondary-foreground: oklch(0.95 0.01 45);
+  --muted: oklch(0.2 0.01 45);
+  --muted-foreground: oklch(0.7 0.01 45);
+  --accent: oklch(0.3 0.03 45);
+  --accent-foreground: oklch(0.95 0.01 45);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(0.25 0.02 45);
+  --input: oklch(0.2 0.01 45);
+  --ring: oklch(0.75 0.15 45);
+  --chart-1: oklch(0.75 0.15 45);
+  --chart-2: oklch(0.65 0.18 45);
+  --chart-3: oklch(0.85 0.12 45);
+  --chart-4: oklch(0.55 0.20 45);
+  --chart-5: oklch(0.45 0.22 45);
+  --sidebar: oklch(0.15 0.01 45);
+  --sidebar-foreground: oklch(0.95 0.01 45);
+  --sidebar-primary: oklch(0.75 0.15 45);
+  --sidebar-primary-foreground: oklch(0.1 0 0);
+  --sidebar-accent: oklch(0.2 0.01 45);
+  --sidebar-accent-foreground: oklch(0.95 0.01 45);
+  --sidebar-border: oklch(0.25 0.02 45);
+  --sidebar-ring: oklch(0.75 0.15 45);
 }
 
 @layer base {
@@ -205,14 +194,13 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground font-sans;
+    @apply bg-background text-foreground font-sans antialiased;
   }
 }
 
 @layer components {
-  /* Insurance App Specific Components */
   .insurance-card {
-    @apply bg-card border border-border rounded-lg p-6 shadow-md hover:shadow-lg transition-shadow duration-200;
+    @apply bg-card border border-border rounded-xl p-6 shadow-sm transition-shadow duration-200;
   }
 
   .insurance-card-selected {
@@ -220,7 +208,7 @@
   }
 
   .form-section {
-    @apply space-y-6 p-6 bg-card rounded-lg border border-border;
+    @apply space-y-6 p-6 bg-card rounded-xl border border-border;
   }
 
   .progress-bar {
@@ -243,51 +231,27 @@
     @apply w-12 h-12 object-contain rounded-md;
   }
 
-  /* Mobile Optimizations */
   .touch-target {
-    @apply min-h-[44px] min-w-[44px]; /* iOS recommended touch target size */
+    @apply min-h-[44px] min-w-[44px];
   }
 
   .mobile-padding {
     @apply px-4 sm:px-6 lg:px-8;
   }
 
-  .mobile-text {
-    @apply text-base sm:text-lg;
-  }
-
   .mobile-button {
     @apply h-12 text-base font-medium px-6;
   }
 
-  /* Smooth scrolling for mobile */
   .smooth-scroll {
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
   }
 
-  /* Focus styles for accessibility */
   .focus-ring {
     @apply focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2;
   }
 
-  /* High contrast mode support */
-  @media (prefers-contrast: high) {
-    .insurance-card {
-      @apply border-2 border-foreground;
-    }
-  }
-
-  /* Reduced motion support */
-  @media (prefers-reduced-motion: reduce) {
-    .progress-fill,
-    .insurance-card,
-    * {
-      @apply transition-none animate-none;
-    }
-  }
-
-  /* Screen reader only content */
   .sr-only {
     position: absolute;
     width: 1px;
@@ -300,26 +264,30 @@
     border: 0;
   }
 
-  /* Skip link for keyboard navigation */
   .skip-link {
     @apply sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50;
     @apply bg-primary text-primary-foreground px-4 py-2 rounded-md font-medium;
     @apply focus:outline-none focus:ring-2 focus:ring-primary-foreground;
   }
 
-  /* Enhanced focus indicators */
   .focus-visible {
     @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-background;
   }
 
-  /* High contrast borders for form elements */
   @media (prefers-contrast: high) {
+    .insurance-card {
+      @apply border-2 border-foreground;
+    }
     input, select, textarea, button {
       @apply border-2 border-foreground;
     }
+  }
 
-    .insurance-card:hover {
-      @apply border-primary border-4;
+  @media (prefers-reduced-motion: reduce) {
+    .progress-fill,
+    .insurance-card,
+    * {
+      @apply transition-none animate-none;
     }
   }
 }

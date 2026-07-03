@@ -29,105 +29,105 @@ export default function ThankYouPage() {
     <PageLayout>
       <CenteredLayout maxWidth="max-w-lg">
         <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle className="w-10 h-10 text-green-600" />
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-5">
+            <CheckCircle className="w-8 h-8 text-green-600" />
           </div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">Payment Successful!</h1>
-          <p className="text-muted-foreground">
-            Your insurance policy has been successfully renewed. A confirmation email will be sent to{' '}
-            {formData?.email || 'your registered email'}.
+          <h1 className="text-2xl font-bold tracking-tight text-foreground mb-2">Payment successful</h1>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Your policy has been renewed. A confirmation email will be sent to{' '}
+            <span className="font-medium text-foreground">{formData?.email || 'your registered email'}</span>.
           </p>
         </div>
 
-        <Card>
+        <Card className="border-border/60 shadow-none">
           <CardHeader>
-            <CardTitle className="text-lg">Policy Summary</CardTitle>
+            <CardTitle className="text-base">Policy summary</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {quotation && (
-              <div className="p-4 bg-muted rounded-lg space-y-2">
+              <div className="p-4 bg-muted/30 rounded-xl space-y-2.5 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Insurer</span>
+                  <span className="text-muted-foreground">Insurer</span>
                   <span className="font-medium">Allianz General Insurance</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Contract No.</span>
+                  <span className="text-muted-foreground">Contract No.</span>
                   <span className="font-medium font-mono text-xs">{quotation.contract.contractNumber}</span>
                 </div>
                 {vehicleDetails && (
                   <>
                     <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Vehicle</span>
+                      <span className="text-muted-foreground">Vehicle</span>
                       <span className="font-medium">{vehicleDetails.vehicleLicenseId}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Coverage Period</span>
+                      <span className="text-muted-foreground">Coverage Period</span>
                       <span className="font-medium text-xs">{vehicleDetails.polEffectiveDate} to {vehicleDetails.polExpiryDate}</span>
                     </div>
                   </>
                 )}
-                <div className="flex justify-between pt-2 border-t">
-                  <span className="text-sm text-muted-foreground">Total Paid</span>
+                <div className="flex justify-between pt-2.5 border-t border-border/60">
+                  <span className="text-muted-foreground">Total Paid</span>
                   <span className="font-bold text-primary">RM {quotation.premium.premiumDueRounded.toFixed(2)}</span>
                 </div>
               </div>
             )}
 
-            {/* Free Look Period Disclosure (BNM Requirement) */}
-            <div className="rounded-lg border border-blue-100 bg-blue-50/50 p-4">
+            {/* Free Look Period */}
+            <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
               <div className="flex items-start gap-3">
-                <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                <div className="space-y-2">
-                  <h4 className="text-sm font-semibold text-blue-900">Free Look Period</h4>
-                  <p className="text-xs text-blue-800 leading-relaxed">
-                    This product is eligible for free-look for 15 days. You may cancel the policy within this period and are entitled to a full premium refund.
+                <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="text-sm font-semibold text-blue-900">Free look period</h4>
+                  <p className="text-xs text-blue-800 mt-0.5 leading-relaxed">
+                    You may cancel within 15 days for a full premium refund.
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Refund Policy Statement (BNM Requirement) */}
-            <div className="rounded-lg border border-amber-100 bg-amber-50/50 p-4">
+            {/* Refund Policy */}
+            <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-4">
               <div className="flex items-start gap-3">
-                <Shield className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                <div className="space-y-2">
-                  <h4 className="text-sm font-semibold text-amber-900">Refund Policy</h4>
-                  <p className="text-xs text-amber-800 leading-relaxed">
-                    You are entitled to a premium refund upon cancellation of the policy, subject to the refund policy as outlined in the Policy Wording. Please refer to the Policy Wording available at{' '}
+                <Shield className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="text-sm font-semibold text-amber-900">Refund policy</h4>
+                  <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">
+                    Refunds upon cancellation are subject to the{' '}
                     <a
                       href="https://www.allianz.com.my/motor-comprehensive-insurance"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-amber-700 underline hover:text-amber-900 inline-flex items-center gap-0.5"
                     >
-                      Allianz Malaysia <ExternalLink className="w-2.5 h-2.5" />
+                      Policy Wording <ExternalLink className="w-2.5 h-2.5" />
                     </a>.
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-3 pt-4">
-              <Button variant="outline" className="w-full justify-start h-12">
-                <Download className="w-5 h-5 mr-3" />
+            <div className="space-y-2.5 pt-2">
+              <Button variant="outline" className="w-full justify-start h-11 text-sm">
+                <Download className="w-4 h-4 mr-3" />
                 Download Policy Schedule (PDF)
               </Button>
-              <Button variant="outline" className="w-full justify-start h-12">
-                <Download className="w-5 h-5 mr-3" />
+              <Button variant="outline" className="w-full justify-start h-11 text-sm">
+                <Download className="w-4 h-4 mr-3" />
                 Download Receipt (PDF)
               </Button>
             </div>
           </CardContent>
           <CardFooter>
             <Button
-              className="w-full"
+              className="w-full h-12 text-base font-semibold"
               onClick={() => {
                 sessionStorage.clear();
                 router.push('/');
               }}
             >
               <Home className="w-4 h-4 mr-2" />
-              Return to Home
+              Return to home
             </Button>
           </CardFooter>
         </Card>

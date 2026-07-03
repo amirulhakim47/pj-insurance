@@ -11,7 +11,7 @@ export const insuranceProviders: InsuranceProvider[] = [
   {
     id: 'allianz',
     name: 'Allianz Malaysia',
-    logo: '/logos/allianz-logo.svg',
+    logo: '/logos/Allianz-logo.png',
     trustScore: 9.5,
   },
   {

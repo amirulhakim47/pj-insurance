@@ -4,11 +4,13 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { PageLayout, CenteredLayout, StepIndicator } from '@/components/ui/layout';
 import { InsuranceLoading } from '@/components/ui/loading';
+import { Button } from '@/components/ui/button';
 import { loadingMessages } from '@/data/sampleData';
 import { getVehicleDetails } from '@/lib/allianz-api';
 import type { InsuranceFormData } from '@/types';
 import type { IdentityType, ApiErrorResponse } from '@/types/allianz';
 import { UBB_REFER_MESSAGES } from '@/types/allianz';
+import { AlertTriangle, XCircle, ArrowLeft } from 'lucide-react';
 
 const steps = ['Details', 'Loading', 'Results'];
 
@@ -67,7 +69,6 @@ export default function LoadingPage() {
 
         sessionStorage.setItem('allianz_vehicleDetails', JSON.stringify(result));
 
-        // Parse claims experience from ismSrespCode E012
         let noOfClaims = '0';
         if (result.ismSrespCode && result.ismSrespValue) {
           const codes = result.ismSrespCode.split(',').map((s: string) => s.trim());
@@ -79,7 +80,6 @@ export default function LoadingPage() {
         }
         sessionStorage.setItem('allianz_noOfClaims', noOfClaims);
 
-        // Block if claims >= 2
         if (parseInt(noOfClaims, 10) >= 2) {
           setError('Your claims history exceeds the limit for online processing. Please contact an agent for assistance.');
           setErrorDetails({ ubbReferCodes: ['UBBE004'] });
@@ -125,45 +125,49 @@ export default function LoadingPage() {
   }, [router]);
 
   if (error) {
+    const isUbbRefer = !!errorDetails?.ubbReferCodes;
+
     return (
       <PageLayout>
         <CenteredLayout maxWidth="max-w-lg">
           <StepIndicator steps={steps} currentStep={1} />
           <div className="space-y-6 text-center">
-            <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center ${
-              errorDetails?.ubbReferCodes ? 'bg-amber-100' : 'bg-red-100'
+            <div className={`mx-auto w-14 h-14 rounded-full flex items-center justify-center ${
+              isUbbRefer ? 'bg-amber-100' : 'bg-red-100'
             }`}>
-              <span className="text-2xl">{errorDetails?.ubbReferCodes ? '\u26A0' : '!'}</span>
+              {isUbbRefer ? (
+                <AlertTriangle className="w-6 h-6 text-amber-600" />
+              ) : (
+                <XCircle className="w-6 h-6 text-red-600" />
+              )}
             </div>
-            <h1 className="text-2xl font-bold text-foreground">
-              {errorDetails?.ubbReferCodes ? 'Unable to Proceed' : 'Something Went Wrong'}
-            </h1>
-            <p className="text-muted-foreground">{error}</p>
+            <div className="space-y-2">
+              <h1 className="text-xl font-bold text-foreground">
+                {isUbbRefer ? 'Unable to proceed' : 'Something went wrong'}
+              </h1>
+              <p className="text-sm text-muted-foreground leading-relaxed">{error}</p>
+            </div>
             {errorDetails?.policyExpiryDate && (
-              <div className="bg-muted/50 rounded-lg p-4 max-w-sm mx-auto">
-                <p className="text-sm text-muted-foreground">
-                  Policy expiry date
-                </p>
-                <p className="text-lg font-semibold text-foreground">
+              <div className="bg-muted/50 rounded-xl p-4 max-w-xs mx-auto">
+                <p className="text-xs text-muted-foreground">Policy expiry date</p>
+                <p className="text-base font-semibold text-foreground mt-0.5">
                   {errorDetails.policyExpiryDate}
                 </p>
               </div>
             )}
             {errorDetails?.ubbReferCodes && errorDetails.ubbReferCodes.length > 1 && (
-              <div className="space-y-2 max-w-sm mx-auto text-left">
+              <div className="space-y-1.5 max-w-sm mx-auto text-left">
                 {errorDetails.ubbReferCodes.slice(1).map((code) => (
-                  <p key={code} className="text-sm text-muted-foreground">
+                  <p key={code} className="text-xs text-muted-foreground">
                     {UBB_REFER_MESSAGES[code] || code}
                   </p>
                 ))}
               </div>
             )}
-            <button
-              onClick={() => router.push('/')}
-              className="px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors"
-            >
-              Back to Form
-            </button>
+            <Button onClick={() => router.push('/')} className="h-11">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to form
+            </Button>
           </div>
         </CenteredLayout>
       </PageLayout>
@@ -176,12 +180,12 @@ export default function LoadingPage() {
         <StepIndicator steps={steps} currentStep={1} />
 
         <div className="space-y-8">
-          <div className="text-center space-y-4">
-            <h1 className="text-3xl font-bold text-foreground">
-              Finding Your Best Deals
+          <div className="text-center space-y-2">
+            <h1 className="text-2xl font-bold text-foreground">
+              Finding your best rates
             </h1>
-            <p className="text-lg text-muted-foreground">
-              We&apos;re fetching your vehicle details and comparing policies to get you the best rates.
+            <p className="text-sm text-muted-foreground">
+              Fetching vehicle details and comparing policies.
             </p>
           </div>
 
@@ -190,14 +194,13 @@ export default function LoadingPage() {
             message={loadingMessages[messageIndex]}
           />
 
-          <div className="text-center space-y-2">
-            <p className="text-sm text-muted-foreground">
-              This may take a few moments...
-            </p>
-            <div className="flex justify-center space-x-6 text-xs text-muted-foreground">
-              <span>Secure Processing</span>
-              <span>Real-time Data</span>
-              <span>Best Rates</span>
+          <div className="text-center">
+            <div className="flex justify-center gap-4 text-xs text-muted-foreground">
+              <span>Secure processing</span>
+              <span className="text-border">|</span>
+              <span>Real-time data</span>
+              <span className="text-border">|</span>
+              <span>Best rates</span>
             </div>
           </div>
         </div>

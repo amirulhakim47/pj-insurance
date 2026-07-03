@@ -84,7 +84,7 @@ export const preloadCriticalResources = () => {
   // Preload critical images
   const criticalImages = [
     '/logos/etiqa-logo.svg',
-    '/logos/allianz-logo.svg',
+    '/logos/Allianz-logo.png',
     '/logos/liberty-logo.svg',
   ];
   
