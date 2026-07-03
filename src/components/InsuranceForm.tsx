@@ -17,6 +17,25 @@ import { Car, Bike, Shield, FileText } from 'lucide-react';
 
 const steps = ['Details', 'Loading', 'Results'];
 
+const isLocalDev =
+  typeof window !== 'undefined' &&
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+const DEV_DEFAULTS: Partial<InsuranceFormData> = {
+  fullName: 'AHMAD BIN IBRAHIM',
+  vehicleType: 'car',
+  identityType: 'NRIC',
+  nric: '841103-01-1116',
+  plateNumber: 'VAP2104',
+  postcode: '50000',
+  phoneNumber: '0121234567',
+  email: 'ahmad@example.com',
+  customerType: 'individual',
+  isEhailing: false,
+  isElectricVehicle: false,
+  pdpaConsent: false,
+};
+
 export default function InsuranceForm() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -32,9 +51,11 @@ export default function InsuranceForm() {
     resolver: zodResolver(insuranceFormSchema),
     mode: 'onChange',
     defaultValues: {
+      identityType: 'NRIC',
       isEhailing: false,
       isElectricVehicle: false,
       pdpaConsent: false,
+      ...(isLocalDev ? DEV_DEFAULTS : {}),
     },
   });
 
@@ -129,13 +150,40 @@ export default function InsuranceForm() {
                 )}
               />
 
+              {/* Identity Type Selection */}
+              <Controller
+                name="identityType"
+                control={control}
+                render={({ field }) => (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">
+                      Identity Type <span className="text-destructive">*</span>
+                    </label>
+                    <select
+                      value={field.value || 'NRIC'}
+                      onChange={(e) => field.onChange(e.target.value)}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    >
+                      <option value="NRIC">NRIC (National Registration Identity Card)</option>
+                      <option value="OLD_IC">Old IC / Others</option>
+                      <option value="PASS">Passport</option>
+                      <option value="POL">Police / Army ID</option>
+                      <option value="BR_NO">Company Registration (BR No)</option>
+                    </select>
+                    {errors.identityType?.message && (
+                      <p className="text-sm text-destructive">{errors.identityType.message}</p>
+                    )}
+                  </div>
+                )}
+              />
+
               {/* NRIC Input */}
               <Controller
                 name="nric"
                 control={control}
                 render={({ field }) => (
                   <NRICField
-                    label="NRIC Number"
+                    label="NRIC / ID Number"
                     value={field.value || ''}
                     onChange={field.onChange}
                     error={errors.nric?.message}

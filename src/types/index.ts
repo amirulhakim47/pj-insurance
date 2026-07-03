@@ -9,6 +9,22 @@ export type CustomerType = 'individual' | 'company';
 import type { InsuranceFormData } from '@/lib/validations';
 export type { InsuranceFormData };
 
+// Re-export Allianz types used throughout the app
+export type {
+  TransactionType,
+  IdentityType,
+  Gender,
+  MaritalStatus,
+  VehicleDetailsResponse,
+  NvicItem,
+  QuotationResponse,
+  AdditionalCoverItem,
+  CheckUBBResponse,
+  NcdDetailsResponse,
+  AllianzFlowState,
+  ApiErrorResponse,
+} from './allianz';
+
 // Insurance Provider Interface
 export interface InsuranceProvider {
   id: string;
@@ -36,7 +52,7 @@ export interface InsurancePolicy {
     flood: boolean;
     windscreen: boolean;
   };
-  loading?: boolean; // For mock loading state
+  loading?: boolean;
 }
 
 // Form Validation Errors

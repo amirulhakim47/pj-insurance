@@ -6,7 +6,7 @@ import { PageLayout, Section, Container, Grid } from '@/components/ui/layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Shield, Zap, Clock, CheckCircle, ArrowRight, Star, Users, Car, Heart, Lock } from 'lucide-react';
+import { Shield, Zap, Clock, CheckCircle, ArrowRight, Star, Users, Car, Heart, Lock, FileText, ExternalLink, Building2 } from 'lucide-react';
 import { DataProtectionCard } from '@/components/ui/data-protection-card';
 import { prefixPath, getHref } from '@/lib/utils';
 
@@ -252,6 +252,101 @@ export default function LandingPage() {
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
+        </div>
+      </Section>
+
+      {/* Regulatory Disclosures Section (BNM / PIDM Compliance) */}
+      <Section title="Important Disclosures" subtitle="Transparency and regulatory compliance information." className="relative">
+        <div className="max-w-4xl mx-auto space-y-6">
+          {/* Relationship & Services Disclosure */}
+          <Card className="border-muted">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center text-base">
+                <Building2 className="w-5 h-5 mr-2 text-primary" />
+                Our Relationship & Services
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm text-muted-foreground">
+              <p>
+                <strong className="text-foreground">Relationship Disclosure:</strong>{' '}
+                We are a registered digital intermediary (agent) of Allianz General Insurance Company (Malaysia) Berhad.
+              </p>
+              <p>
+                <strong className="text-foreground">Level of Services Offered:</strong>{' '}
+                As a registered agent, we provide: 1) product advisory, 2) assistance in changing/updating policy details, 3) claims assistance. Alternatively, you may also contact Allianz General Insurance Company (Malaysia) Berhad directly for after-sales services.
+              </p>
+              <p>
+                <strong className="text-foreground">Alternative Direct Channel:</strong>{' '}
+                You may purchase this product directly from Allianz General Insurance Company (Malaysia) Berhad by visiting{' '}
+                <a href="https://www.allianz.com.my" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">
+                  www.allianz.com.my <ExternalLink className="w-3 h-3" />
+                </a>{' '}
+                or contacting them at 1300 22 5542, or by walking in to the nearest Allianz branch.
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* PIDM Statement */}
+          <Card className="border-muted">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center text-base">
+                <Shield className="w-5 h-5 mr-2 text-blue-600" />
+                PIDM Protection
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm text-muted-foreground">
+              <p>
+                The benefit(s) payable under eligible certificate/policy/product is(are) protected by PIDM up to limits. Please refer to PIDM&apos;s TIPS Brochure or contact Allianz General Insurance Company (Malaysia) Berhad or PIDM (visit{' '}
+                <a href="https://www.pidm.gov.my" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                  www.pidm.gov.my
+                </a>).
+              </p>
+              <div className="flex items-center gap-2 pt-2">
+                <FileText className="w-4 h-4 text-primary flex-shrink-0" />
+                <a
+                  href="https://www.pidm.gov.my/en/for-public/tips-brochure"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline font-medium inline-flex items-center gap-1"
+                >
+                  View PIDM TIPS Brochure <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Product Disclosure Sheet & Policy Wording */}
+          <Card className="border-muted">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center text-base">
+                <FileText className="w-5 h-5 mr-2 text-primary" />
+                Product Documents
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-muted-foreground">
+              <p>
+                Please review the following documents before purchasing your insurance policy:
+              </p>
+              <div className="flex flex-col gap-2">
+                <a
+                  href="/docs/allianz-motor-pds.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline font-medium inline-flex items-center gap-2"
+                >
+                  <FileText className="w-4 h-4" /> Product Disclosure Sheet (PDS) <ExternalLink className="w-3 h-3" />
+                </a>
+                <a
+                  href="https://www.allianz.com.my/motor-comprehensive-insurance"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline font-medium inline-flex items-center gap-2"
+                >
+                  <FileText className="w-4 h-4" /> Policy Wording / Terms &amp; Conditions <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </Section>
 

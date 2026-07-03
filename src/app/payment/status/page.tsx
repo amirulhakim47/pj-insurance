@@ -6,14 +6,31 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { PageLayout, CenteredLayout } from '@/components/ui/layout';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, XCircle, AlertCircle, Home, RefreshCcw } from 'lucide-react';
+import { CheckCircle, XCircle, Home, RefreshCcw } from 'lucide-react';
 import { verifySenangPayHash } from '@/lib/senangpay';
-import { getHref } from '@/lib/utils';
+import { submitTransaction } from '@/lib/allianz-api';
+import type { InsuranceFormData } from '@/types';
+import type { QuotationResponse, VehicleDetailsResponse, NvicItem, IdentityType, Gender } from '@/types/allianz';
+
+function extractGenderFromNRIC(nric: string): Gender {
+  const digits = nric.replace(/-/g, '');
+  const lastDigit = parseInt(digits[digits.length - 1], 10);
+  return lastDigit % 2 === 0 ? 'F' : 'M';
+}
+
+function extractBirthDateFromNRIC(nric: string): string {
+  const digits = nric.replace(/-/g, '');
+  const yy = digits.substring(0, 2);
+  const mm = digits.substring(2, 4);
+  const dd = digits.substring(4, 6);
+  const year = parseInt(yy, 10) > 30 ? `19${yy}` : `20${yy}`;
+  return `${year}-${mm}-${dd}`;
+}
 
 function PaymentStatusContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [status, setStatus] = React.useState<'loading' | 'success' | 'failed'>('loading');
+  const [status, setStatus] = React.useState<'loading' | 'submitting' | 'success' | 'failed'>('loading');
   const [message, setMessage] = React.useState('');
 
   React.useEffect(() => {
@@ -29,32 +46,116 @@ function PaymentStatusContent() {
       return;
     }
 
-    // Verify hash client-side (since we are on static hosting with exposed keys)
-    const verifyPayment = async () => {
+    const verifyAndSubmit = async () => {
       try {
         const isValid = await verifySenangPayHash(
           status_id,
           order_id || '',
           transaction_id || '',
           msg || '',
-          hash
+          hash,
         );
 
-        if (isValid) {
-          if (status_id === '1') {
-            setStatus('success');
-            // Redirect to thank you page after a short delay
-            setTimeout(() => {
-                router.push('/thank-you');
-            }, 1500);
-          } else {
-            setStatus('failed');
-            setMessage(msg ? msg.replace(/_/g, ' ') : 'Payment failed');
-          }
-        } else {
+        if (!isValid) {
           setStatus('failed');
           setMessage('Security verification failed. Data may be tampered.');
+          return;
         }
+
+        if (status_id !== '1') {
+          setStatus('failed');
+          setMessage(msg ? msg.replace(/_/g, ' ') : 'Payment failed');
+          return;
+        }
+
+        setStatus('submitting');
+
+        const formDataRaw = sessionStorage.getItem('insuranceFormData');
+        const quotationRaw = sessionStorage.getItem('allianz_quotation');
+        const vehicleRaw = sessionStorage.getItem('allianz_vehicleDetails');
+        const nvicRaw = sessionStorage.getItem('allianz_selectedNvic');
+
+        if (!formDataRaw || !quotationRaw) {
+          setStatus('success');
+          setTimeout(() => router.push('/thank-you'), 1500);
+          return;
+        }
+
+        const formData: InsuranceFormData = JSON.parse(formDataRaw);
+        const quotation: QuotationResponse = JSON.parse(quotationRaw);
+        const vehicleDetails: VehicleDetailsResponse | null = vehicleRaw ? JSON.parse(vehicleRaw) : null;
+        const selectedNvic: NvicItem | null = nvicRaw ? JSON.parse(nvicRaw) : null;
+        const marketingConsent = sessionStorage.getItem('allianz_marketingConsent') || 'N';
+        const customerDetailsRaw = sessionStorage.getItem('allianz_customerDetails');
+
+        // Use customer details if available, otherwise fall back to form data
+        let mobilePrefix = '6012';
+        let mobile = formData.phoneNumber;
+        let fullName = formData.fullName;
+        let email = formData.email;
+        let postalCode = formData.postcode;
+        let addressLine1 = formData.postcode;
+        let addressLine2: string | undefined;
+        let addressLine3: string | undefined;
+
+        if (customerDetailsRaw) {
+          const customerDetails = JSON.parse(customerDetailsRaw);
+          mobilePrefix = customerDetails.mobilePrefix || mobilePrefix;
+          mobile = customerDetails.mobileNumber || mobile;
+          fullName = customerDetails.fullName || fullName;
+          email = customerDetails.email || email;
+          postalCode = customerDetails.postcode || postalCode;
+          addressLine1 = customerDetails.addressLine1 || addressLine1;
+          addressLine2 = customerDetails.addressLine2 || undefined;
+          addressLine3 = customerDetails.addressLine3 || undefined;
+        } else {
+          const phoneParts = formData.phoneNumber.match(/^(\+?6?0\d{1,2})(\d{7,8})$/);
+          mobilePrefix = phoneParts ? phoneParts[1] : '6012';
+          mobile = phoneParts ? phoneParts[2] : formData.phoneNumber;
+        }
+
+        try {
+          await submitTransaction({
+            salesChannel: 'PTR',
+            contract: {
+              contractNumber: quotation.contract.contractNumber,
+              emarketingConsentInd: marketingConsent as 'Y' | 'N',
+            },
+            person: {
+              identityType: (formData.identityType as IdentityType) || 'NRIC',
+              identityNumber: formData.nric.replace(/-/g, ''),
+              fullName,
+              birthDate: extractBirthDateFromNRIC(formData.nric),
+              gender: formData.customerType === 'company' ? 'C' : extractGenderFromNRIC(formData.nric),
+              email,
+              postalCode,
+              mobilePrefix,
+              mobile,
+              addressLine1,
+              addressLine2,
+              addressLine3,
+            },
+            vehicle: {
+              nvicCode: selectedNvic?.nvic || '',
+              vehicleEngineCC: vehicleDetails?.vehicleEngineCC || '',
+              yearOfManufacture: vehicleDetails?.yearOfManufacture || '',
+              occupantsNumber: vehicleDetails?.seatingCapacity || 5,
+            },
+            driverDetails: [],
+            payment: {
+              paymentMode: 'ONLCCN',
+              paymentBankRef: transaction_id || '',
+              paymentId: transaction_id || '',
+              paymentDate: new Date().toISOString().replace('T', ' ').substring(0, 19),
+              paymentAmount: quotation.premium.premiumDueRounded.toFixed(2),
+            },
+          });
+        } catch (submissionErr) {
+          console.error('Allianz submission error (non-blocking):', submissionErr);
+        }
+
+        setStatus('success');
+        setTimeout(() => router.push('/thank-you'), 1500);
       } catch (error) {
         console.error('Verification error:', error);
         setStatus('failed');
@@ -62,17 +163,29 @@ function PaymentStatusContent() {
       }
     };
 
-    verifyPayment();
+    verifyAndSubmit();
   }, [searchParams, router]);
 
   if (status === 'loading') {
     return (
       <CenteredLayout maxWidth="max-w-md">
-          <div className="flex flex-col items-center justify-center space-y-4 p-8">
-              <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-              <h2 className="text-xl font-semibold">Verifying Payment...</h2>
-              <p className="text-muted-foreground text-center">Please do not close this window.</p>
-          </div>
+        <div className="flex flex-col items-center justify-center space-y-4 p-8">
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <h2 className="text-xl font-semibold">Verifying Payment...</h2>
+          <p className="text-muted-foreground text-center">Please do not close this window.</p>
+        </div>
+      </CenteredLayout>
+    );
+  }
+
+  if (status === 'submitting') {
+    return (
+      <CenteredLayout maxWidth="max-w-md">
+        <div className="flex flex-col items-center justify-center space-y-4 p-8">
+          <div className="w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full animate-spin" />
+          <h2 className="text-xl font-semibold text-green-600">Payment Verified!</h2>
+          <p className="text-muted-foreground text-center">Submitting your policy to Allianz...</p>
+        </div>
       </CenteredLayout>
     );
   }
@@ -80,11 +193,11 @@ function PaymentStatusContent() {
   if (status === 'success') {
     return (
       <CenteredLayout maxWidth="max-w-md">
-           <div className="flex flex-col items-center justify-center space-y-4 p-8">
-              <CheckCircle className="w-16 h-16 text-green-500" />
-              <h2 className="text-2xl font-bold text-green-600">Payment Successful!</h2>
-              <p className="text-center text-muted-foreground">Redirecting you to confirmation page...</p>
-          </div>
+        <div className="flex flex-col items-center justify-center space-y-4 p-8">
+          <CheckCircle className="w-16 h-16 text-green-500" />
+          <h2 className="text-2xl font-bold text-green-600">Payment Successful!</h2>
+          <p className="text-center text-muted-foreground">Redirecting you to confirmation page...</p>
+        </div>
       </CenteredLayout>
     );
   }
@@ -94,29 +207,22 @@ function PaymentStatusContent() {
       <Card className="border-destructive/50">
         <CardHeader className="text-center">
           <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
-              <XCircle className="w-8 h-8 text-red-600" />
+            <XCircle className="w-8 h-8 text-red-600" />
           </div>
           <CardTitle className="text-2xl text-red-600">Payment Failed</CardTitle>
         </CardHeader>
         <CardContent className="text-center space-y-4">
           <p className="text-lg font-medium">{message}</p>
           <p className="text-sm text-muted-foreground">
-            We couldn't process your payment. Please try again or use a different payment method.
+            We couldn&apos;t process your payment. Please try again or use a different payment method.
           </p>
         </CardContent>
         <CardFooter className="flex flex-col space-y-3">
-          <Button 
-              className="w-full" 
-              onClick={() => router.push('/payment')}
-          >
+          <Button className="w-full" onClick={() => router.push('/payment')}>
             <RefreshCcw className="w-4 h-4 mr-2" />
             Try Again
           </Button>
-          <Button 
-              variant="outline" 
-              className="w-full"
-              onClick={() => router.push('/')}
-          >
+          <Button variant="outline" className="w-full" onClick={() => router.push('/')}>
             <Home className="w-4 h-4 mr-2" />
             Return to Home
           </Button>
@@ -129,14 +235,16 @@ function PaymentStatusContent() {
 export default function PaymentStatusPage() {
   return (
     <PageLayout>
-      <Suspense fallback={
-        <CenteredLayout maxWidth="max-w-md">
+      <Suspense
+        fallback={
+          <CenteredLayout maxWidth="max-w-md">
             <div className="flex flex-col items-center justify-center space-y-4 p-8">
-                <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-                <h2 className="text-xl font-semibold">Loading...</h2>
+              <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+              <h2 className="text-xl font-semibold">Loading...</h2>
             </div>
-        </CenteredLayout>
-      }>
+          </CenteredLayout>
+        }
+      >
         <PaymentStatusContent />
       </Suspense>
     </PageLayout>

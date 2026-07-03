@@ -1,9 +1,49 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { InsuranceFormData, InsurancePolicy, NavigationState } from '@/types';
-import { getHref } from '@/lib/utils';
+import type { InsuranceFormData, InsurancePolicy, NavigationState } from '@/types';
+import type {
+  VehicleDetailsResponse,
+  NvicItem,
+  QuotationResponse,
+  CheckUBBResponse,
+  TransactionType,
+} from '@/types/allianz';
+
+const STORAGE_KEYS = {
+  formData: 'insuranceFormData',
+  selectedPolicy: 'selectedPolicy',
+  vehicleDetails: 'allianz_vehicleDetails',
+  selectedNvic: 'allianz_selectedNvic',
+  quotation: 'allianz_quotation',
+  selectedAddons: 'allianz_selectedAddons',
+  ubbResult: 'allianz_ubbResult',
+  transactionType: 'allianz_transactionType',
+  customerDetails: 'allianz_customerDetails',
+  marketingConsent: 'allianz_marketingConsent',
+  noOfClaims: 'allianz_noOfClaims',
+} as const;
+
+function safeGet<T>(key: string): T | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const stored = sessionStorage.getItem(key);
+    return stored ? JSON.parse(stored) : null;
+  } catch {
+    return null;
+  }
+}
+
+function safeSet(key: string, value: unknown): void {
+  if (typeof window === 'undefined') return;
+  sessionStorage.setItem(key, JSON.stringify(value));
+}
+
+function safeRemove(key: string): void {
+  if (typeof window === 'undefined') return;
+  sessionStorage.removeItem(key);
+}
 
 export function useInsuranceFlow() {
   const router = useRouter();
@@ -11,116 +51,180 @@ export function useInsuranceFlow() {
     currentStep: 'form',
   });
 
-  // Load state from sessionStorage on mount
   useEffect(() => {
-    const formData = getStoredFormData();
-    const selectedPolicy = getStoredSelectedPolicy();
-    
-    setNavigationState(prev => ({
+    const formData = safeGet<InsuranceFormData>(STORAGE_KEYS.formData);
+    const selectedPolicy = safeGet<InsurancePolicy>(STORAGE_KEYS.selectedPolicy);
+
+    setNavigationState((prev) => ({
       ...prev,
       formData: formData || undefined,
       selectedPolicy: selectedPolicy || undefined,
     }));
   }, []);
 
-  const getStoredFormData = (): InsuranceFormData | null => {
-    if (typeof window === 'undefined') return null;
-    
-    try {
-      const stored = sessionStorage.getItem('insuranceFormData');
-      return stored ? JSON.parse(stored) : null;
-    } catch {
-      return null;
-    }
-  };
+  // ── Form data ──
 
-  const getStoredSelectedPolicy = (): InsurancePolicy | null => {
-    if (typeof window === 'undefined') return null;
-    
-    try {
-      const stored = sessionStorage.getItem('selectedPolicy');
-      return stored ? JSON.parse(stored) : null;
-    } catch {
-      return null;
-    }
-  };
+  const getStoredFormData = useCallback(
+    () => safeGet<InsuranceFormData>(STORAGE_KEYS.formData),
+    [],
+  );
 
-  const storeFormData = (data: InsuranceFormData) => {
-    if (typeof window === 'undefined') return;
-    
-    sessionStorage.setItem('insuranceFormData', JSON.stringify(data));
-    setNavigationState(prev => ({
-      ...prev,
-      formData: data,
-    }));
-  };
+  const storeFormData = useCallback(
+    (data: InsuranceFormData) => {
+      safeSet(STORAGE_KEYS.formData, data);
+      setNavigationState((prev) => ({ ...prev, formData: data }));
+    },
+    [],
+  );
 
-  const storeSelectedPolicy = (policy: InsurancePolicy) => {
-    if (typeof window === 'undefined') return;
-    
-    sessionStorage.setItem('selectedPolicy', JSON.stringify(policy));
-    setNavigationState(prev => ({
-      ...prev,
-      selectedPolicy: policy,
-    }));
-  };
+  // ── Selected policy ──
 
-  const clearStoredData = () => {
-    if (typeof window === 'undefined') return;
-    
-    sessionStorage.removeItem('insuranceFormData');
-    sessionStorage.removeItem('selectedPolicy');
-    setNavigationState({
-      currentStep: 'form',
-    });
-  };
+  const getStoredSelectedPolicy = useCallback(
+    () => safeGet<InsurancePolicy>(STORAGE_KEYS.selectedPolicy),
+    [],
+  );
 
-  const navigateToStep = (step: NavigationState['currentStep']) => {
-    setNavigationState(prev => ({
-      ...prev,
-      currentStep: step,
-    }));
+  const storeSelectedPolicy = useCallback(
+    (policy: InsurancePolicy) => {
+      safeSet(STORAGE_KEYS.selectedPolicy, policy);
+      setNavigationState((prev) => ({ ...prev, selectedPolicy: policy }));
+    },
+    [],
+  );
 
-    switch (step) {
-      case 'form':
-        router.push('/');
-        break;
-      case 'loading':
-        router.push('/loading');
-        break;
-      case 'results':
-        router.push('/results');
-        break;
-      case 'payment':
-        router.push('/payment');
-        break;
-      case 'confirmation':
-        router.push('/thank-you');
-        break;
-    }
-  };
+  // ── Allianz vehicle details ──
 
-  const submitForm = async (data: InsuranceFormData) => {
-    storeFormData(data);
-    navigateToStep('loading');
-  };
+  const getVehicleDetails = useCallback(
+    () => safeGet<VehicleDetailsResponse>(STORAGE_KEYS.vehicleDetails),
+    [],
+  );
 
-  const selectPolicy = (policy: InsurancePolicy) => {
-    storeSelectedPolicy(policy);
-    navigateToStep('payment');
-  };
+  const storeVehicleDetails = useCallback(
+    (data: VehicleDetailsResponse) => safeSet(STORAGE_KEYS.vehicleDetails, data),
+    [],
+  );
 
-  const restartFlow = () => {
+  // ── Selected NVIC variant ──
+
+  const getSelectedNvic = useCallback(
+    () => safeGet<NvicItem>(STORAGE_KEYS.selectedNvic),
+    [],
+  );
+
+  const storeSelectedNvic = useCallback(
+    (nvic: NvicItem) => safeSet(STORAGE_KEYS.selectedNvic, nvic),
+    [],
+  );
+
+  // ── Quotation ──
+
+  const getQuotation = useCallback(
+    () => safeGet<QuotationResponse>(STORAGE_KEYS.quotation),
+    [],
+  );
+
+  const storeQuotation = useCallback(
+    (data: QuotationResponse) => safeSet(STORAGE_KEYS.quotation, data),
+    [],
+  );
+
+  // ── UBB Result ──
+
+  const getUBBResult = useCallback(
+    () => safeGet<CheckUBBResponse>(STORAGE_KEYS.ubbResult),
+    [],
+  );
+
+  const storeUBBResult = useCallback(
+    (data: CheckUBBResponse) => safeSet(STORAGE_KEYS.ubbResult, data),
+    [],
+  );
+
+  // ── Transaction Type ──
+
+  const getTransactionType = useCallback(
+    (): TransactionType => safeGet<TransactionType>(STORAGE_KEYS.transactionType) || 'NWOO',
+    [],
+  );
+
+  const storeTransactionType = useCallback(
+    (type: TransactionType) => safeSet(STORAGE_KEYS.transactionType, type),
+    [],
+  );
+
+  // ── Clear all ──
+
+  const clearStoredData = useCallback(() => {
+    Object.values(STORAGE_KEYS).forEach(safeRemove);
+    setNavigationState({ currentStep: 'form' });
+  }, []);
+
+  // ── Navigation ──
+
+  const navigateToStep = useCallback(
+    (step: NavigationState['currentStep']) => {
+      setNavigationState((prev) => ({ ...prev, currentStep: step }));
+      switch (step) {
+        case 'form':
+          router.push('/');
+          break;
+        case 'loading':
+          router.push('/loading');
+          break;
+        case 'results':
+          router.push('/results');
+          break;
+        case 'payment':
+          router.push('/payment');
+          break;
+        case 'confirmation':
+          router.push('/thank-you');
+          break;
+      }
+    },
+    [router],
+  );
+
+  const submitForm = useCallback(
+    async (data: InsuranceFormData) => {
+      storeFormData(data);
+      navigateToStep('loading');
+    },
+    [storeFormData, navigateToStep],
+  );
+
+  const selectPolicy = useCallback(
+    (policy: InsurancePolicy) => {
+      storeSelectedPolicy(policy);
+      navigateToStep('payment');
+    },
+    [storeSelectedPolicy, navigateToStep],
+  );
+
+  const restartFlow = useCallback(() => {
     clearStoredData();
     navigateToStep('form');
-  };
+  }, [clearStoredData, navigateToStep]);
 
   return {
     navigationState,
+    // Form / policy
     getStoredFormData,
     getStoredSelectedPolicy,
     storeFormData,
     storeSelectedPolicy,
+    // Allianz-specific
+    getVehicleDetails,
+    storeVehicleDetails,
+    getSelectedNvic,
+    storeSelectedNvic,
+    getQuotation,
+    storeQuotation,
+    getUBBResult,
+    storeUBBResult,
+    getTransactionType,
+    storeTransactionType,
+    // Navigation
     clearStoredData,
     navigateToStep,
     submitForm,
@@ -129,7 +233,6 @@ export function useInsuranceFlow() {
   };
 }
 
-// Hook for checking if user can access a specific page
 export function usePageAccess(requiredStep: NavigationState['currentStep']) {
   const router = useRouter();
   const { getStoredFormData, getStoredSelectedPolicy } = useInsuranceFlow();
@@ -138,13 +241,12 @@ export function usePageAccess(requiredStep: NavigationState['currentStep']) {
     const formData = getStoredFormData();
     const selectedPolicy = getStoredSelectedPolicy();
 
-    // Define access rules
     const accessRules = {
-      form: true, // Always accessible
-      loading: !!formData, // Requires form data
-      results: !!formData, // Requires form data
-      payment: !!formData && !!selectedPolicy, // Requires form data and selected policy
-      confirmation: !!formData && !!selectedPolicy, // Requires form data and selected policy
+      form: true,
+      loading: !!formData,
+      results: !!formData,
+      payment: !!formData && !!selectedPolicy,
+      confirmation: !!formData && !!selectedPolicy,
     };
 
     if (!accessRules[requiredStep]) {
@@ -153,17 +255,16 @@ export function usePageAccess(requiredStep: NavigationState['currentStep']) {
   }, [requiredStep, router, getStoredFormData, getStoredSelectedPolicy]);
 }
 
-// Hook for progress tracking
 export function useProgressTracking() {
   const [progress, setProgress] = useState(0);
 
   const startProgress = (duration: number = 5000) => {
     setProgress(0);
-    const interval = 50; // Update every 50ms
+    const interval = 50;
     const increment = 100 / (duration / interval);
 
     const timer = setInterval(() => {
-      setProgress(prev => {
+      setProgress((prev) => {
         const newProgress = prev + increment;
         if (newProgress >= 100) {
           clearInterval(timer);

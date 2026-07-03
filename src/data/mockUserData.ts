@@ -5,6 +5,7 @@ export const sampleFormData: InsuranceFormData[] = [
   {
     fullName: 'John Doe',
     vehicleType: 'car' as VehicleType,
+    identityType: 'NRIC' as const,
     nric: '123456-12-1234',
     plateNumber: 'ABC1234',
     postcode: '50450',
@@ -18,6 +19,7 @@ export const sampleFormData: InsuranceFormData[] = [
   {
     fullName: 'Jane Smith',
     vehicleType: 'motorcycle' as VehicleType,
+    identityType: 'NRIC' as const,
     nric: '987654-32-5678',
     plateNumber: 'XYZ9876',
     postcode: '10350',
@@ -31,6 +33,7 @@ export const sampleFormData: InsuranceFormData[] = [
   {
     fullName: 'ABC Company Sdn Bhd',
     vehicleType: 'car' as VehicleType,
+    identityType: 'BR_NO' as const,
     nric: '456789-01-2345',
     plateNumber: 'DEF5678',
     postcode: '40150',

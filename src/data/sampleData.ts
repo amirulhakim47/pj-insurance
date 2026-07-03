@@ -53,11 +53,12 @@ export const generateSampleFormData = (count: number = 10): InsuranceFormData[] 
     samples.push({
       fullName: `Test User ${i + 1}`,
       vehicleType: vehicleTypes[Math.floor(Math.random() * vehicleTypes.length)],
+      identityType: 'NRIC',
       nric: sampleNRICs[Math.floor(Math.random() * sampleNRICs.length)],
       plateNumber: samplePlateNumbers[Math.floor(Math.random() * samplePlateNumbers.length)],
       postcode: samplePostcodes[Math.floor(Math.random() * samplePostcodes.length)],
-      phoneNumber: '0123456789', // Default dummy value
-      email: 'test@example.com', // Default dummy value
+      phoneNumber: '0123456789',
+      email: 'test@example.com',
       customerType: customerTypes[Math.floor(Math.random() * customerTypes.length)],
       isEhailing: false,
       isElectricVehicle: false,
@@ -75,6 +76,7 @@ export const testScenarios: { name: string; data: InsuranceFormData }[] = [
     data: {
       fullName: 'Ahmad Rahman',
       vehicleType: 'car',
+      identityType: 'NRIC',
       nric: '900101-01-1234',
       plateNumber: 'WA1234A',
       postcode: '50450',
@@ -91,6 +93,7 @@ export const testScenarios: { name: string; data: InsuranceFormData }[] = [
     data: {
       fullName: 'Tech Solutions Sdn Bhd',
       vehicleType: 'motorcycle',
+      identityType: 'BR_NO',
       nric: '850615-02-5678',
       plateNumber: 'BCA5678',
       postcode: '40150',
@@ -107,6 +110,7 @@ export const testScenarios: { name: string; data: InsuranceFormData }[] = [
     data: {
       fullName: 'Lim Wei Ming',
       vehicleType: 'car',
+      identityType: 'NRIC',
       nric: '920330-03-9012',
       plateNumber: 'PBA9012',
       postcode: '10350',
@@ -123,6 +127,7 @@ export const testScenarios: { name: string; data: InsuranceFormData }[] = [
     data: {
       fullName: 'Johor Logistics Sdn Bhd',
       vehicleType: 'car',
+      identityType: 'BR_NO',
       nric: '880722-04-3456',
       plateNumber: 'JHA3456',
       postcode: '80000',

@@ -1,0 +1,61 @@
+import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';
+import { tokenManager } from './services/allianz-auth';
+import { errorHandler } from './middleware/error-handler';
+import vehicleRoutes from './routes/vehicle';
+import ubbRoutes from './routes/ubb';
+import quoteRoutes from './routes/quote';
+import submissionRoutes from './routes/submission';
+import lovRoutes from './routes/lov';
+import callbackRoutes from './routes/callback';
+
+const app = express();
+const PORT = parseInt(process.env.PORT ?? '3001', 10);
+
+const allowedOrigins = (process.env.FRONTEND_URL ?? 'http://localhost:3000')
+  .split(',')
+  .map((o) => o.trim());
+
+app.use(
+  cors({
+    origin: allowedOrigins,
+    credentials: true,
+  }),
+);
+app.use(express.json());
+
+app.use((req, _res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  next();
+});
+
+app.get('/api/health', (_req, res) => {
+  res.json({
+    status: 'ok',
+    allianzConfigured: tokenManager.isConfigured(),
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.use('/api', vehicleRoutes);
+app.use('/api', ubbRoutes);
+app.use('/api', quoteRoutes);
+app.use('/api', submissionRoutes);
+app.use('/api', lovRoutes);
+app.use('/api', callbackRoutes);
+
+app.use(errorHandler);
+
+app.listen(PORT, () => {
+  console.log(`\n[Server] Backend running on http://localhost:${PORT}`);
+  console.log(`[Server] Health check: http://localhost:${PORT}/api/health`);
+  console.log(
+    `[Server] Allianz credentials: ${tokenManager.isConfigured() ? 'configured' : 'NOT configured - set ALLIANZ_CONSUMER_KEY and ALLIANZ_CONSUMER_SECRET'}`,
+  );
+  console.log(
+    `[Server] CORS origins: ${allowedOrigins.join(', ')}\n`,
+  );
+});
+
+export default app;
