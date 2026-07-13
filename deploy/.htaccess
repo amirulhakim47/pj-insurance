@@ -1,4 +1,4 @@
-Options +FollowSymLinks
+Options +FollowSymLinks +MultiViews
 RewriteEngine On
 
 # Force HTTPS (uncomment if your domain has SSL on both frontend and backend)
@@ -9,11 +9,15 @@ RewriteEngine On
 RewriteCond %{REQUEST_URI} ^/pj-insurance/api/ [NC]
 RewriteRule ^pj-insurance/api/(.*)$ /pj-insurance/api-proxy.php [L,QSA]
 
-# If the requested file or directory exists, serve it directly
+# If the file exists with .html extension, serve it (handles SenangPay return redirect)
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME}.html -f
+RewriteRule ^(.*)$ $1.html [L]
 
-# For SPA: route all non-file requests to index.html
+# If no file found at all, serve index.html (client-side SPA routing)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^pj-insurance/(.*)$ /pj-insurance/index.html [L]
 
 # Security headers
