@@ -7,6 +7,9 @@ import { PageLayout, Container, Grid } from '@/components/ui/layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
+
+const basePath = process.env.NODE_ENV === 'production' ? '/pj-insurance' : '';
+
 import {
   Shield, Zap, Clock, CheckCircle, ArrowRight, Star,
   Lock, FileText, ExternalLink, Building2,
@@ -94,7 +97,7 @@ export default function LandingPage() {
             <div className="relative order-first md:order-last">
               <div className="relative rounded-[2rem] overflow-hidden shadow-2xl shadow-black/15 aspect-[4/3] ring-1 ring-black/5">
                 <Image
-                  src="/images/hero-car.jpg"
+                  src={`${basePath}/images/hero-car.jpg`}
                   alt="Car owner unlocking their vehicle — protected by Allianz insurance"
                   fill
                   priority
@@ -176,7 +179,7 @@ export default function LandingPage() {
           <div className="flex flex-col items-center justify-center gap-2.5">
             <span className="text-[11px] text-muted-foreground/70 font-medium uppercase tracking-[0.2em]">Powered by</span>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logos/Allianz-logo.png" alt="Allianz General Insurance" className="h-14 sm:h-16 w-auto object-contain" />
+            <img src={`${basePath}/logos/Allianz-logo.png`} alt="Allianz General Insurance" className="h-14 sm:h-16 w-auto object-contain" />
           </div>
         </Container>
       </section>
