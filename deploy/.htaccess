@@ -1,15 +1,20 @@
+Options +FollowSymLinks
 RewriteEngine On
 
-# Force HTTPS (uncomment if your domain has SSL)
+# Force HTTPS (uncomment if your domain has SSL on both frontend and backend)
 # RewriteCond %{HTTPS} off
 # RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Proxy /api requests to PHP reverse proxy (routes to Node.js backend internally)
+RewriteCond %{REQUEST_URI} ^/pj-insurance/api/ [NC]
+RewriteRule ^pj-insurance/api/(.*)$ /pj-insurance/api-proxy.php [L,QSA]
 
 # If the requested file or directory exists, serve it directly
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 
 # For SPA: route all non-file requests to index.html
-RewriteRule ^(.*)$ /pj-insurance/index.html [L]
+RewriteRule ^pj-insurance/(.*)$ /pj-insurance/index.html [L]
 
 # Security headers
 <IfModule mod_headers.c>
