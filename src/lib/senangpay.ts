@@ -1,52 +1,54 @@
+const BASE_URL =
+  process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:3001';
 
-const MERCHANT_ID = process.env.NEXT_PUBLIC_SENANGPAY_MERCHANT_ID || '136175265133530';
-const SECRET_KEY = process.env.SENANGPAY_SECRET_KEY || process.env.NEXT_PUBLIC_SENANGPAY_SECRET_KEY || 'SK-IHRzWygdRgIPOiq9leu7';
+let cachedMerchantId: string | null = null;
 
 export const SENANGPAY_CONFIG = {
-  merchantId: MERCHANT_ID,
-  url: 'https://sandbox.senangpay.my/payment/' + MERCHANT_ID,
+  get merchantId(): string {
+    return cachedMerchantId || process.env.NEXT_PUBLIC_SENANGPAY_MERCHANT_ID || '';
+  },
+  get url(): string {
+    const id = this.merchantId;
+    return `https://sandbox.senangpay.my/payment/${id}`;
+  },
 };
 
-/**
- * Generates HMAC-SHA256 hash using Web Crypto API (Browser compatible).
- * WARNING: In production, hash generation should be done server-side
- * via a backend API to avoid exposing the secret key.
- */
-export async function generateSenangPayHash(detail: string, amount: string, orderId: string): Promise<string> {
-  const str = SECRET_KEY + detail + amount + orderId;
-  return await hmacSha256(SECRET_KEY, str);
+export async function generateSenangPayHash(
+  detail: string,
+  amount: string,
+  orderId: string,
+): Promise<{ hash: string; merchantId: string }> {
+  const res = await fetch(`${BASE_URL}/api/payment/hash`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ detail, amount, order_id: orderId }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: 'Hash generation failed' }));
+    throw new Error(err.message || 'Failed to generate payment hash');
+  }
+
+  const data = await res.json();
+  cachedMerchantId = data.merchant_id;
+  return { hash: data.hash, merchantId: data.merchant_id };
 }
 
-/**
- * Verifies HMAC-SHA256 hash using Web Crypto API (Browser compatible).
- * In production, this verification should also happen server-side.
- */
-export async function verifySenangPayHash(status_id: string, order_id: string, transaction_id: string, msg: string, receivedHash: string): Promise<boolean> {
-  const str = SECRET_KEY + status_id + order_id + transaction_id + msg;
-  const generatedHash = await hmacSha256(SECRET_KEY, str);
-  return generatedHash === receivedHash;
-}
+export async function verifySenangPayHash(
+  status_id: string,
+  order_id: string,
+  transaction_id: string,
+  msg: string,
+  receivedHash: string,
+): Promise<boolean> {
+  const res = await fetch(`${BASE_URL}/api/payment/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status_id, order_id, transaction_id, msg, hash: receivedHash }),
+  });
 
-async function hmacSha256(key: string, data: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const keyData = encoder.encode(key);
-  const msgData = encoder.encode(data);
+  if (!res.ok) return false;
 
-  const cryptoKey = await crypto.subtle.importKey(
-    'raw',
-    keyData,
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
-
-  const signature = await crypto.subtle.sign(
-    'HMAC',
-    cryptoKey,
-    msgData
-  );
-
-  return Array.from(new Uint8Array(signature))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
+  const data = await res.json();
+  return data.valid === true;
 }

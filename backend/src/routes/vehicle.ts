@@ -30,6 +30,24 @@ router.post(
         return;
       }
 
+      if (typeof plateNumber !== 'string' || typeof identityNumber !== 'string') {
+        res.status(400).json({
+          status: 400,
+          code: 'VALIDATION_ERROR',
+          message: 'plateNumber and identityNumber must be strings',
+        });
+        return;
+      }
+
+      if (!/^[A-Za-z0-9\s]{1,20}$/.test(plateNumber)) {
+        res.status(400).json({
+          status: 400,
+          code: 'VALIDATION_ERROR',
+          message: 'Invalid plate number format',
+        });
+        return;
+      }
+
       const result = await allianzApi.getVehicleDetails({
         sourceSystem: partnerId(),
         vehicleLicenseId: plateNumber.toUpperCase().replace(/\s/g, ''),

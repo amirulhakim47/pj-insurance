@@ -66,14 +66,11 @@ export default function PaymentPage() {
     return quotation.additionalCover.filter((c) => selectedAddons.includes(c.coverCode));
   }, [quotation, selectedAddons]);
 
-  const addonsTotal = React.useMemo(() => {
-    return selectedAddonCovers.reduce((sum, c) => sum + c.displayPremium, 0) + driverPlanCost;
-  }, [selectedAddonCovers, driverPlanCost]);
-
   const grandTotal = React.useMemo(() => {
     if (!quotation) return 0;
-    return quotation.premium.premiumDueRounded + addonsTotal;
-  }, [quotation, addonsTotal]);
+    // premiumDueRounded from Allianz already includes all selected add-ons and driver costs
+    return quotation.premium.premiumDueRounded;
+  }, [quotation]);
 
   const handlePayment = async () => {
     if (!quotation || !formData || !pdsAcknowledged) return;
@@ -85,11 +82,12 @@ export default function PaymentPage() {
       const orderId = `ORDER-${quotation.contract.contractNumber}-${Date.now()}`;
       const formattedAmount = grandTotal.toFixed(2);
       const detail = `Motor_Insurance_${quotation.contract.contractNumber}`;
-      const hash = await generateSenangPayHash(detail, formattedAmount, orderId);
+      const { hash, merchantId } = await generateSenangPayHash(detail, formattedAmount, orderId);
 
+      const paymentUrl = `https://sandbox.senangpay.my/payment/${merchantId}`;
       const form = document.createElement('form');
       form.method = 'POST';
-      form.action = SENANGPAY_CONFIG.url;
+      form.action = paymentUrl;
 
       const name = customerDetails?.fullName || formData.fullName;
       const email = customerDetails?.email || formData.email;

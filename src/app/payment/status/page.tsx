@@ -84,7 +84,6 @@ function PaymentStatusContent() {
         const additionalDriversRaw = sessionStorage.getItem('allianz_additionalDrivers');
         const ehailingDriverRaw = sessionStorage.getItem('allianz_ehailingDriver');
         const selectedAddonsRaw = sessionStorage.getItem('allianz_selectedAddons');
-        const driverPlanCostRaw = sessionStorage.getItem('allianz_driverPlanCost');
 
         let mobilePrefix = '6012';
         let mobile = formData.phoneNumber;
@@ -128,10 +127,8 @@ function PaymentStatusContent() {
           }
         }
 
-        const addonsTotal = selectedAddonsRaw
-          ? quotation.additionalCover.filter((c) => JSON.parse(selectedAddonsRaw).includes(c.coverCode)).reduce((s, c) => s + c.displayPremium, 0) + parseFloat(driverPlanCostRaw || '0')
-          : 0;
-        const totalAmount = (quotation.premium.premiumDueRounded + addonsTotal).toFixed(2);
+        // premiumDueRounded already includes all add-ons and driver costs from the last updateQuote call
+        const totalAmount = quotation.premium.premiumDueRounded.toFixed(2);
 
         try {
           await submitWithRetry({

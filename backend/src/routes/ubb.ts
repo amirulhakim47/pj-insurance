@@ -19,8 +19,7 @@ router.post(
         return;
       }
 
-      body.SourceSystem =
-        body.SourceSystem || (process.env.ALLIANZ_PARTNER_ID ?? '');
+      body.SourceSystem = process.env.ALLIANZ_PARTNER_ID ?? body.SourceSystem ?? '';
       body.CheckUbbInd = 2;
 
       const result = await allianzApi.checkUBB(body);

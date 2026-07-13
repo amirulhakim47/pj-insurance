@@ -14,34 +14,21 @@ export default function ThankYouPage() {
   const [quotation, setQuotation] = React.useState<QuotationResponse | null>(null);
   const [vehicleDetails, setVehicleDetails] = React.useState<VehicleDetailsResponse | null>(null);
   const [formData, setFormData] = React.useState<InsuranceFormData | null>(null);
-  const [selectedAddons, setSelectedAddons] = React.useState<string[]>([]);
-  const [driverPlanCost, setDriverPlanCost] = React.useState(0);
 
   React.useEffect(() => {
     const storedQuotation = sessionStorage.getItem('allianz_quotation');
     const storedVehicle = sessionStorage.getItem('allianz_vehicleDetails');
     const storedForm = sessionStorage.getItem('insuranceFormData');
-    const storedAddons = sessionStorage.getItem('allianz_selectedAddons');
-    const storedDriverCost = sessionStorage.getItem('allianz_driverPlanCost');
-
     if (storedQuotation) setQuotation(JSON.parse(storedQuotation));
     if (storedVehicle) setVehicleDetails(JSON.parse(storedVehicle));
     if (storedForm) setFormData(JSON.parse(storedForm));
-    if (storedAddons) setSelectedAddons(JSON.parse(storedAddons));
-    if (storedDriverCost) setDriverPlanCost(parseFloat(storedDriverCost));
   }, []);
-
-  const addonsTotal = React.useMemo(() => {
-    if (!quotation) return 0;
-    return quotation.additionalCover
-      .filter((c) => selectedAddons.includes(c.coverCode))
-      .reduce((sum, c) => sum + c.displayPremium, 0) + driverPlanCost;
-  }, [quotation, selectedAddons, driverPlanCost]);
 
   const grandTotal = React.useMemo(() => {
     if (!quotation) return 0;
-    return quotation.premium.premiumDueRounded + addonsTotal;
-  }, [quotation, addonsTotal]);
+    // premiumDueRounded already includes all add-ons and driver costs from the last updateQuote call
+    return quotation.premium.premiumDueRounded;
+  }, [quotation]);
 
   const handleDownload = (type: 'policy' | 'receipt') => {
     const contractNumber = quotation?.contract?.contractNumber || 'unknown';

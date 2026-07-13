@@ -347,8 +347,10 @@ function ResultsPage() {
 
   const totalWithAddons = React.useMemo(() => {
     if (!quotation) return 0;
-    return quotation.premium.premiumDueRounded + addonsTotal;
-  }, [quotation, addonsTotal]);
+    // premiumDueRounded from Allianz already includes selected add-ons and driver plan costs
+    // (after updateQuote). Only use addonsTotal for display breakdown, not for total calculation.
+    return quotation.premium.premiumDueRounded;
+  }, [quotation]);
 
   const handleToggleAddon = async (cover: AdditionalCoverItem) => {
     if (!quotation || !vehicleDetails || isUpdatingQuote) return;
@@ -614,7 +616,7 @@ function ResultsPage() {
               <div className="text-center py-10 bg-gradient-to-b from-muted/20 to-muted/40 rounded-2xl border border-border/30 shadow-sm">
                 <p className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-[0.2em] mb-2">Annual Premium</p>
                 <p className="font-serif text-4xl sm:text-5xl font-bold text-foreground tracking-tight transition-all">RM {totalWithAddons.toFixed(2)}</p>
-                {addonsTotal > 0 && <p className="text-xs text-muted-foreground mt-2">Base RM {quotation.premium.premiumDueRounded.toFixed(2)} + Add-ons RM {addonsTotal.toFixed(2)}</p>}
+                {addonsTotal > 0 && <p className="text-xs text-muted-foreground mt-2">Includes RM {addonsTotal.toFixed(2)} in add-on coverage</p>}
                 <p className="text-xs text-muted-foreground mt-2.5">Comprehensive &middot; Sum insured RM {currentSumInsured.toLocaleString('en-MY')}</p>
               </div>
 

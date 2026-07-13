@@ -5,6 +5,7 @@ const isProd = process.env.NODE_ENV === 'production';
 const nextConfig = {
   output: 'export',
   basePath: isProd ? '/pj-insurance' : '',
+  poweredByHeader: false,
   
   // Enable experimental features for better performance
   experimental: {
