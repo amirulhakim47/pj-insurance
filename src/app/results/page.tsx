@@ -831,7 +831,13 @@ function AddonCoverCard({ cover, isSelected, isUpdating, onToggle, addonInputs, 
             </div>
           )}
         </div>
-        <span className={`font-semibold text-sm flex-shrink-0 ${cover.displayPremium === 0 ? 'text-green-600' : ''}`}>{cover.displayPremium === 0 ? 'FREE' : `+ RM ${cover.displayPremium.toFixed(2)}`}</span>
+        <span className={`font-semibold text-sm flex-shrink-0 ${cover.displayPremium === 0 && cover.selectedIndicator ? 'text-green-600' : cover.displayPremium === 0 ? 'text-muted-foreground' : ''}`}>
+          {cover.displayPremium === 0 && cover.selectedIndicator
+            ? 'FREE'
+            : cover.displayPremium === 0
+              ? '—'
+              : `+ RM ${cover.displayPremium.toFixed(2)}`}
+        </span>
       </div>
     </button>
   );
