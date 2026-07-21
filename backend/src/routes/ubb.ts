@@ -19,12 +19,23 @@ router.post(
         return;
       }
 
-      body.SourceSystem = process.env.ALLIANZ_PARTNER_ID ?? body.SourceSystem ?? '';
+      body.SourceSystem = process.env.ALLIANZ_PARTNER_ID ?? 'DCAUTO';
       body.CheckUbbInd = 2;
 
+      console.log('[CheckUBB] Request payload:', JSON.stringify(body, null, 2));
+
       const result = await allianzApi.checkUBB(body);
+
+      console.log('[CheckUBB] Response:', JSON.stringify(result, null, 2));
+
       res.json(result);
-    } catch (err) {
+    } catch (err: unknown) {
+      const apiErr = err as { status?: number; response?: { data?: unknown } };
+      console.error('[CheckUBB] Error:', JSON.stringify({
+        status: apiErr?.status,
+        response: apiErr?.response?.data,
+        message: (err as Error)?.message,
+      }, null, 2));
       next(err);
     }
   },

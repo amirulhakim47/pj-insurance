@@ -260,7 +260,7 @@ function ResultsPage() {
 
         try {
           const ubb2Result = await checkUBB({
-            ReferenceNo: vehicleDetails.contractNumber, ProductCat: 'MPC', SourceSystem: 'PTR',
+            ReferenceNo: vehicleDetails.contractNumber, ProductCat: 'MPC', SourceSystem: 'DCAUTO',
             ClaimsExp: noOfClaims, ReconInd: reconInd, ExcessWaiveInd: false, CheckUbbInd: 2,
             Policy: {
               PolicyEffectiveDate: vehicleDetails.polEffectiveDate,
