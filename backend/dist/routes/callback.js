@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const router = (0, express_1.Router)();
+const IS_UAT = process.env.NODE_ENV !== 'production';
 const ALLOWED_IPS = (process.env.CALLBACK_ALLOWED_IPS || '')
     .split(',')
     .map((ip) => ip.trim())
@@ -50,7 +51,8 @@ router.post('/callback', async (req, res) => {
             },
             timestamp: new Date().toISOString(),
         });
-        if (!verifySourceIP(req)) {
+        // UAT: x-api-key only. Production: IP whitelist + x-api-key + payload validation.
+        if (!IS_UAT && !verifySourceIP(req)) {
             console.warn('[Allianz Callback] BLOCKED — IP not in whitelist:', clientIP);
             res.status(403).json({ received: false, error: 'Forbidden' });
             return;
@@ -61,7 +63,7 @@ router.post('/callback', async (req, res) => {
             return;
         }
         const { contractNumber, policyNumber, status, policyPdf, vehicleLicenseId } = req.body;
-        if (!contractNumber) {
+        if (!IS_UAT && !contractNumber) {
             console.warn('[Allianz Callback] REJECTED — Missing contractNumber');
             res.status(400).json({ received: false, error: 'contractNumber is required' });
             return;
