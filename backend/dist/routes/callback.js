@@ -2,6 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const router = (0, express_1.Router)();
+const ALLOWED_IPS = (process.env.CALLBACK_ALLOWED_IPS || '')
+    .split(',')
+    .map((ip) => ip.trim())
+    .filter(Boolean);
 function verifyApiKey(req) {
     const expectedKey = process.env.CALLBACK_API_KEY;
     if (!expectedKey) {
@@ -16,39 +20,57 @@ function verifyApiKey(req) {
     }
     return providedKey === expectedKey;
 }
+function verifySourceIP(req) {
+    if (ALLOWED_IPS.length === 0)
+        return true;
+    const clientIP = req.ip || req.socket.remoteAddress || '';
+    const forwarded = (req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+    const sourceIP = forwarded || clientIP;
+    return ALLOWED_IPS.some((allowed) => sourceIP.includes(allowed));
+}
 /**
  * Allianz Callback Endpoint
- * Receives post-issuance callbacks from Allianz after policy submission.
- * Authentication: x-api-key header (no HMAC — Allianz uses OAuth Bearer + x-api-key)
+ * Authentication: x-api-key header + optional IP whitelist
  *
- * URL to provide Allianz:
- *   UAT: http://gentle-emerald-armadillo.103-10-78-80.cpanel.site/pj-insurance/api/callback
+ * Security layers:
+ *   1. x-api-key validation (required)
+ *   2. IP whitelist (if CALLBACK_ALLOWED_IPS is set)
+ *   3. Payload validation (contractNumber must be present)
+ *   4. Full request logging for audit trail
  */
 router.post('/callback', async (req, res) => {
     try {
+        const clientIP = req.headers['x-forwarded-for'] || req.ip || 'unknown';
         console.log('[Allianz Callback] Incoming request:', {
+            ip: clientIP,
             headers: {
                 'content-type': req.headers['content-type'],
                 'x-api-key': req.headers['x-api-key'] ? '***present***' : 'not present',
                 'authorization': req.headers['authorization'] ? '***present***' : 'not present',
             },
-            body: JSON.stringify(req.body, null, 2),
-            ip: req.ip,
             timestamp: new Date().toISOString(),
         });
-        if (!verifyApiKey(req)) {
-            console.warn('[Allianz Callback] Invalid or missing x-api-key', { ip: req.ip });
-            res.status(401).json({ received: false, error: 'Unauthorized: invalid x-api-key' });
+        if (!verifySourceIP(req)) {
+            console.warn('[Allianz Callback] BLOCKED — IP not in whitelist:', clientIP);
+            res.status(403).json({ received: false, error: 'Forbidden' });
             return;
         }
-        const { contractNumber, policyNumber, status, policyPdf, vehicleLicenseId, customerEmail, customerName, } = req.body;
-        console.log('[Allianz Callback] Processed:', {
+        if (!verifyApiKey(req)) {
+            console.warn('[Allianz Callback] BLOCKED — Invalid x-api-key from:', clientIP);
+            res.status(401).json({ received: false, error: 'Unauthorized' });
+            return;
+        }
+        const { contractNumber, policyNumber, status, policyPdf, vehicleLicenseId } = req.body;
+        if (!contractNumber) {
+            console.warn('[Allianz Callback] REJECTED — Missing contractNumber');
+            res.status(400).json({ received: false, error: 'contractNumber is required' });
+            return;
+        }
+        console.log('[Allianz Callback] ACCEPTED:', {
             contractNumber,
             policyNumber,
             status,
             vehicleLicenseId,
-            customerEmail,
-            customerName,
             hasPdf: !!policyPdf,
             pdfLength: policyPdf ? policyPdf.length : 0,
         });
