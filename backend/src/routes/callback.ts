@@ -1,41 +1,30 @@
 import { Router, type Request, type Response } from 'express';
-import crypto from 'crypto';
 
 const router = Router();
 
-function verifyCallbackSignature(req: Request): boolean {
-  const secret = process.env.CALLBACK_HMAC_SECRET;
-  if (!secret) {
-    console.warn('[Allianz Callback] CALLBACK_HMAC_SECRET not set — accepting in non-production');
+function verifyApiKey(req: Request): boolean {
+  const expectedKey = process.env.CALLBACK_API_KEY;
+  if (!expectedKey) {
+    console.warn('[Allianz Callback] CALLBACK_API_KEY not set — accepting in non-production');
     return process.env.NODE_ENV !== 'production';
   }
 
-  const signature =
-    (req.headers['x-allianz-signature'] as string) ||
-    (req.headers['x-signature'] as string) ||
-    (req.headers['x-hmac-signature'] as string);
+  const providedKey =
+    (req.headers['x-api-key'] as string) ||
+    (req.headers['X-Api-Key'] as string);
 
-  if (!signature) {
-    console.warn('[Allianz Callback] No signature header found. Headers:', Object.keys(req.headers).join(', '));
-    return process.env.NODE_ENV !== 'production';
-  }
-
-  const payload = JSON.stringify(req.body);
-  const expected = crypto.createHmac('sha256', secret).update(payload).digest('hex');
-
-  try {
-    return crypto.timingSafeEqual(
-      Buffer.from(signature, 'hex'),
-      Buffer.from(expected, 'hex'),
-    );
-  } catch {
+  if (!providedKey) {
+    console.warn('[Allianz Callback] No x-api-key header found. Headers:', Object.keys(req.headers).join(', '));
     return false;
   }
+
+  return providedKey === expectedKey;
 }
 
 /**
  * Allianz Callback Endpoint
  * Receives post-issuance callbacks from Allianz after policy submission.
+ * Authentication: x-api-key header (no HMAC — Allianz uses OAuth Bearer + x-api-key)
  *
  * URL to provide Allianz:
  *   UAT: http://gentle-emerald-armadillo.103-10-78-80.cpanel.site/pj-insurance/api/callback
@@ -47,17 +36,17 @@ router.post(
       console.log('[Allianz Callback] Incoming request:', {
         headers: {
           'content-type': req.headers['content-type'],
-          'x-allianz-signature': req.headers['x-allianz-signature'] || 'not present',
-          'x-signature': req.headers['x-signature'] || 'not present',
+          'x-api-key': req.headers['x-api-key'] ? '***present***' : 'not present',
+          'authorization': req.headers['authorization'] ? '***present***' : 'not present',
         },
         body: JSON.stringify(req.body, null, 2),
         ip: req.ip,
         timestamp: new Date().toISOString(),
       });
 
-      if (!verifyCallbackSignature(req)) {
-        console.warn('[Allianz Callback] Signature verification failed', { ip: req.ip });
-        res.status(401).json({ received: false, error: 'Unauthorized: invalid signature' });
+      if (!verifyApiKey(req)) {
+        console.warn('[Allianz Callback] Invalid or missing x-api-key', { ip: req.ip });
+        res.status(401).json({ received: false, error: 'Unauthorized: invalid x-api-key' });
         return;
       }
 
@@ -84,10 +73,8 @@ router.post(
 
       if (status === 'SUCCESS' && policyNumber) {
         console.log(`[Allianz Callback] Policy issued: ${policyNumber} for contract ${contractNumber}`);
-        // TODO: Store policy details, send email to customer if needed
       } else if (status === 'FAILED') {
         console.error(`[Allianz Callback] Policy issuance FAILED for contract ${contractNumber}`);
-        // TODO: Alert, retry, or notify customer
       }
 
       res.status(200).json({ received: true, timestamp: new Date().toISOString() });
