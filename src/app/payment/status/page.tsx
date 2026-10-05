@@ -61,8 +61,11 @@ function PaymentStatusContent() {
 
     const verifyAndSubmit = async () => {
       try {
-        const isValid = await verifySenangPayHash(status_id, order_id || '', transaction_id || '', msg || '', hash);
-        if (!isValid) { setStatus('failed'); setMessage('Security verification failed. Data may be tampered.'); return; }
+        const verification = await verifySenangPayHash(status_id, order_id || '', transaction_id || '', msg || '', hash);
+        if (!verification.valid) { setStatus('failed'); setMessage('Security verification failed. Data may be tampered.'); return; }
+        if (verification.policyAccessToken) {
+          sessionStorage.setItem('policyAccessToken', verification.policyAccessToken);
+        }
         if (status_id !== '1') { setStatus('failed'); setMessage(msg ? msg.replace(/_/g, ' ') : 'Payment failed'); return; }
 
         setStatus('submitting');
@@ -132,6 +135,7 @@ function PaymentStatusContent() {
 
         try {
           await submitWithRetry({
+            paymentOrderId: order_id || '',
             salesChannel: 'PTR',
             contract: { contractNumber: quotation.contract.contractNumber, emarketingConsentInd: marketingConsent as 'Y' | 'N' },
             person: {

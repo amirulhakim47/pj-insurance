@@ -31,9 +31,9 @@ export function Container({ children, className, size = 'lg' }: ContainerProps) 
 
 const NAV_LINKS = [
   { href: '/', label: 'Home' },
-  { href: '#coverage', label: 'Coverage' },
-  { href: '#how-it-works', label: 'How It Works' },
-  { href: '#reviews', label: 'Reviews' },
+  { href: '/#coverage', label: 'Coverage' },
+  { href: '/#how-it-works', label: 'How It Works' },
+  { href: '/#reviews', label: 'Reviews' },
 ];
 
 interface PageLayoutProps {
@@ -70,13 +70,13 @@ export function PageLayout({
                   {/* Desktop nav */}
                   <div className="hidden md:flex items-center gap-10">
                     {NAV_LINKS.map((link) => (
-                      <a
+                      <Link
                         key={link.label}
                         href={link.href}
                         className="text-[15px] text-muted-foreground hover:text-primary transition-colors duration-200 font-normal tracking-wide"
                       >
                         {link.label}
-                      </a>
+                      </Link>
                     ))}
                   </div>
 
@@ -103,14 +103,14 @@ export function PageLayout({
             {mobileOpen && (
               <div className="md:hidden border-t border-border/40 py-4 space-y-1">
                 {NAV_LINKS.map((link) => (
-                  <a
+                  <Link
                     key={link.label}
                     href={link.href}
                     onClick={() => setMobileOpen(false)}
                     className="block px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors"
                   >
                     {link.label}
-                  </a>
+                  </Link>
                 ))}
                 <div className="pt-2 px-3">
                   <Button asChild size="sm" className="w-full rounded-full">

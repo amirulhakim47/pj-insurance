@@ -92,7 +92,6 @@ export function RadioField({
               "flex items-start space-x-3 p-3 rounded-lg border transition-colors cursor-pointer hover:bg-muted/50",
               value === option.value ? "border-primary bg-primary/5" : "border-transparent"
             )}
-            onClick={() => onValueChange?.(option.value)}
           >
             <RadioGroupItem
               value={option.value}
@@ -122,6 +121,44 @@ export function RadioField({
 // Specialized input for NRIC with formatting
 interface NRICFieldProps extends Omit<TextFieldProps, 'onChange'> {
   onChange?: (value: string) => void;
+}
+
+interface IdentityNumberFieldProps extends Omit<TextFieldProps, 'onChange'> {
+  identityType: 'NRIC' | 'OLD_IC' | 'PASS' | 'POL' | 'BR_NO';
+  onChange?: (value: string) => void;
+}
+
+export function IdentityNumberField({ identityType, onChange, label, ...props }: IdentityNumberFieldProps) {
+  if (identityType === 'NRIC') {
+    return <NRICField label={label} onChange={onChange} {...props} />;
+  }
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value;
+    if (identityType === 'PASS' || identityType === 'OLD_IC' || identityType === 'POL') {
+      value = value.toUpperCase().replace(/[^A-Z0-9-]/g, '');
+    } else {
+      value = value.toUpperCase().replace(/[^A-Z0-9-]/g, '');
+    }
+    onChange?.(value);
+  };
+
+  const placeholders: Record<string, string> = {
+    PASS: 'A12345678',
+    OLD_IC: 'ID NUMBER',
+    POL: 'ID NUMBER',
+    BR_NO: '123456-A',
+  };
+
+  return (
+    <TextField
+      {...props}
+      label={label}
+      onChange={handleChange}
+      placeholder={placeholders[identityType] ?? 'ID NUMBER'}
+      maxLength={identityType === 'PASS' ? 12 : 20}
+    />
+  );
 }
 
 export function NRICField({ onChange, ...props }: NRICFieldProps) {

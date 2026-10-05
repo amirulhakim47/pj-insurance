@@ -1,3 +1,5 @@
+const path = require('path')
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   poweredByHeader: false,
@@ -13,21 +15,23 @@ const nextConfig = {
 
   compress: true,
 
-  ...(process.env.ANALYZE === 'true' && {
-    webpack: (config, { isServer }) => {
-      if (!isServer) {
-        const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer')
-        config.plugins.push(
-          new BundleAnalyzerPlugin({
-            analyzerMode: 'static',
-            openAnalyzer: false,
-            reportFilename: '../bundle-analyzer-report.html',
-          })
-        )
-      }
-      return config
-    },
-  }),
+  webpack: (config, { isServer }) => {
+    // Explicit alias — some hosts (e.g. Hostinger) don't resolve tsconfig paths reliably
+    config.resolve.alias['@'] = path.join(__dirname, 'src')
+
+    if (process.env.ANALYZE === 'true' && !isServer) {
+      const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer')
+      config.plugins.push(
+        new BundleAnalyzerPlugin({
+          analyzerMode: 'static',
+          openAnalyzer: false,
+          reportFilename: '../bundle-analyzer-report.html',
+        })
+      )
+    }
+
+    return config
+  },
 }
 
 module.exports = nextConfig

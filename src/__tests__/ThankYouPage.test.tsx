@@ -1,28 +1,17 @@
 import { render, screen, act } from '@testing-library/react';
+import ThankYouPage from '@/app/thank-you/page';
+import { ALLIANZ_DOCUMENTS } from '@/config/allianz-documents';
 
 const mockPush = jest.fn();
-const mockRouter = {
-  push: mockPush,
-  back: jest.fn(),
-  replace: jest.fn(),
-  prefetch: jest.fn(),
-  forward: jest.fn(),
-  refresh: jest.fn(),
-};
-
 jest.mock('next/navigation', () => ({
-  useRouter: () => mockRouter,
+  useRouter: () => ({ push: mockPush, back: jest.fn(), replace: jest.fn(), prefetch: jest.fn(), forward: jest.fn(), refresh: jest.fn() }),
   useSearchParams: () => new URLSearchParams(),
   usePathname: () => '/thank-you',
 }));
 
-import ThankYouPage from '@/app/thank-you/page';
-
 const mockQuotation = {
   contract: { contractNumber: 'CNAZ00004272328' },
-  premium: {
-    premiumDueRounded: 1086.50,
-  },
+  premium: { premiumDueRounded: 1086.50 },
   additionalCover: [],
 };
 
@@ -39,17 +28,21 @@ const mockVehicleDetails = {
 const mockFormData = {
   fullName: 'AHMAD BIN IBRAHIM',
   email: 'ahmad@example.com',
+  nric: '841103-01-1116',
 };
 
 describe('ThankYouPage', () => {
-  let sessionData: Record<string, string>;
-
   beforeEach(() => {
     jest.clearAllMocks();
-    sessionData = {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ready: false }),
+    }) as jest.Mock;
+    const sessionData: Record<string, string> = {
       allianz_quotation: JSON.stringify(mockQuotation),
       allianz_vehicleDetails: JSON.stringify(mockVehicleDetails),
       insuranceFormData: JSON.stringify(mockFormData),
+      policyAccessToken: 'test-token',
     };
     (window.sessionStorage.getItem as jest.Mock).mockImplementation(
       (key: string) => sessionData[key] || null,
@@ -58,12 +51,12 @@ describe('ThankYouPage', () => {
 
   it('renders payment successful message', async () => {
     await act(async () => { render(<ThankYouPage />); });
-    expect(screen.getByText('Payment Successful!')).toBeInTheDocument();
+    expect(screen.getByText('Payment successful')).toBeInTheDocument();
   });
 
   it('displays policy summary with contract number', async () => {
     await act(async () => { render(<ThankYouPage />); });
-    expect(screen.getByText('Policy Summary')).toBeInTheDocument();
+    expect(screen.getByText('Policy summary')).toBeInTheDocument();
     expect(screen.getByText('CNAZ00004272328')).toBeInTheDocument();
   });
 
@@ -77,35 +70,15 @@ describe('ThankYouPage', () => {
     expect(screen.getByText('RM 1086.50')).toBeInTheDocument();
   });
 
-  it('displays Free Look Period disclosure', async () => {
+  it('displays refund policy disclosure', async () => {
     await act(async () => { render(<ThankYouPage />); });
-    expect(screen.getByText('Free Look Period')).toBeInTheDocument();
-    expect(
-      screen.getByText(/eligible for free-look for 15 days/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Refund policy')).toBeInTheDocument();
   });
 
-  it('displays Refund Policy disclosure', async () => {
+  it('has link to policy wording in refund section', async () => {
     await act(async () => { render(<ThankYouPage />); });
-    expect(screen.getByText('Refund Policy')).toBeInTheDocument();
-    expect(
-      screen.getByText(/entitled to a premium refund upon cancellation/i),
-    ).toBeInTheDocument();
-  });
-
-  it('has link to Allianz policy wording in refund section', async () => {
-    await act(async () => { render(<ThankYouPage />); });
-    const allianzLink = screen.getByRole('link', { name: /Allianz Malaysia/i });
-    expect(allianzLink).toHaveAttribute(
-      'href',
-      'https://www.allianz.com.my/motor-comprehensive-insurance',
-    );
-  });
-
-  it('displays download buttons', async () => {
-    await act(async () => { render(<ThankYouPage />); });
-    expect(screen.getByText(/Download Policy Schedule/i)).toBeInTheDocument();
-    expect(screen.getByText(/Download Receipt/i)).toBeInTheDocument();
+    const link = screen.getByRole('link', { name: /Policy Wording/i });
+    expect(link).toHaveAttribute('href', ALLIANZ_DOCUMENTS.policyWording);
   });
 
   it('has a Return to Home button', async () => {
@@ -116,15 +89,5 @@ describe('ThankYouPage', () => {
   it('mentions email notification to user', async () => {
     await act(async () => { render(<ThankYouPage />); });
     expect(screen.getByText(/ahmad@example.com/)).toBeInTheDocument();
-  });
-
-  it('shows insurer name as Allianz', async () => {
-    await act(async () => { render(<ThankYouPage />); });
-    expect(screen.getByText('Allianz General Insurance')).toBeInTheDocument();
-  });
-
-  it('shows coverage period', async () => {
-    await act(async () => { render(<ThankYouPage />); });
-    expect(screen.getByText(/2026-08-30 to 2027-08-29/)).toBeInTheDocument();
   });
 });

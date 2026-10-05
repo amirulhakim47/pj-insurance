@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
+import { AllianzLogo } from '@/components/ui/allianz-logo';
 import { PageLayout, CenteredLayout, StepIndicator } from '@/components/ui/layout';
 import { InsuranceLoading } from '@/components/ui/loading';
 import { Button } from '@/components/ui/button';
@@ -136,6 +137,7 @@ export default function LoadingPage() {
         <CenteredLayout maxWidth="max-w-lg">
           <StepIndicator steps={STEPS} currentStep={0} />
           <div className="space-y-6 text-center">
+            <AllianzLogo />
             <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center shadow-lg ${
               isUbbRefer ? 'bg-amber-50 shadow-amber-100/50' : 'bg-red-50 shadow-red-100/50'
             }`}>
@@ -185,6 +187,7 @@ export default function LoadingPage() {
 
         <div className="space-y-8">
           <div className="text-center space-y-3">
+            <AllianzLogo />
             <h1 className="font-serif text-2xl font-bold text-foreground tracking-tight">
               Finding your best rates
             </h1>

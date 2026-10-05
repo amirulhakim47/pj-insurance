@@ -24,7 +24,10 @@ async function allianzFetch<T>(
     if (qs) url += `?${qs}`;
   }
 
-  console.log(`[Allianz] ${method} ${path} | X-Request-ID: ${requestId}`);
+  const verbose = process.env.NODE_ENV !== 'production';
+  if (verbose) {
+    console.log(`[Allianz] ${method} ${path} | X-Request-ID: ${requestId}`);
+  }
 
   const headers: Record<string, string> = {
     Authorization: `Bearer ${token}`,
@@ -42,14 +45,20 @@ async function allianzFetch<T>(
   const data = await response.json();
 
   if (!response.ok) {
-    console.error(`[Allianz] Error ${response.status}:`, JSON.stringify(data));
+    if (verbose) {
+      console.error(`[Allianz] Error ${response.status}:`, JSON.stringify(data));
+    } else {
+      console.error(`[Allianz] Error ${response.status} ${method} ${path} | X-Request-ID: ${requestId}`);
+    }
     const error: any = new Error(`Allianz API error: ${response.status}`);
     error.status = response.status;
     error.response = { data };
     throw error;
   }
 
-  console.log(`[Allianz] Response ${response.status} ${method} ${path}:`, JSON.stringify(data, null, 2));
+  if (verbose) {
+    console.log(`[Allianz] Response ${response.status} ${method} ${path}:`, JSON.stringify(data, null, 2));
+  }
   return data as T;
 }
 

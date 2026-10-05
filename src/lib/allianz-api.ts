@@ -220,6 +220,7 @@ export interface SubmitParams {
     paymentDate: string;
     paymentAmount: string;
   };
+  paymentOrderId: string;
 }
 
 export async function submitTransaction(

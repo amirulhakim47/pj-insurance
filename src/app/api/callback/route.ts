@@ -1,4 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  storePolicyPdf,
+  storePolicyMetadata,
+  type PolicyMetadata,
+} from '@/lib/server/policy-storage';
+import { assertSafeContractNumber } from '@/lib/server/contract-number';
+import { secureCompare } from '@/lib/server/secure-compare';
 
 const IS_UAT = process.env.NODE_ENV !== 'production';
 
@@ -24,19 +31,39 @@ function verifyApiKey(req: NextRequest): boolean {
     return false;
   }
 
-  return providedKey === expectedKey;
+  return secureCompare(providedKey, expectedKey);
 }
 
 function verifySourceIP(req: NextRequest): boolean {
   const allowedIPs = getAllowedIPs();
-  if (allowedIPs.length === 0) return true;
+  if (allowedIPs.length === 0) {
+    return process.env.NODE_ENV !== 'production';
+  }
 
   const forwarded = req.headers.get('x-forwarded-for') || '';
   const sourceIP = forwarded.split(',')[0].trim() || req.headers.get('x-real-ip') || '';
 
-  return allowedIPs.some((allowed) => sourceIP.includes(allowed));
+  return allowedIPs.some((allowed) => sourceIP === allowed);
 }
 
+interface CallbackPayload {
+  contractNumber: string;
+  policyNumber?: string;
+  status: 'SUCCESS' | 'FAILED';
+  policyPdf?: string;
+  vehicleLicenseId?: string;
+}
+
+/**
+ * Model B callback handler — Allianz sends policy PDF in callback payload
+ * and also emails the customer directly.
+ *
+ * Flow:
+ *  1. Validate IP + API key
+ *  2. Parse payload (contractNumber, policyNumber, status, policyPdf base64)
+ *  3. If status=SUCCESS and policyPdf present → store PDF to filesystem
+ *  4. Store metadata JSON alongside the PDF for status lookups
+ */
 export async function POST(req: NextRequest) {
   try {
     const clientIP = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
@@ -60,12 +87,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ received: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await req.json();
+    const body: CallbackPayload = await req.json();
     const { contractNumber, policyNumber, status, policyPdf, vehicleLicenseId } = body;
 
-    if (!IS_UAT && !contractNumber) {
+    if (!contractNumber) {
       console.warn('[Allianz Callback] REJECTED — Missing contractNumber');
       return NextResponse.json({ received: false, error: 'contractNumber is required' }, { status: 400 });
+    }
+
+    let safeContractNumber: string;
+    try {
+      safeContractNumber = assertSafeContractNumber(contractNumber);
+    } catch {
+      console.warn('[Allianz Callback] REJECTED — Invalid contractNumber format');
+      return NextResponse.json({ received: false, error: 'Invalid contractNumber' }, { status: 400 });
     }
 
     console.log('[Allianz Callback] ACCEPTED:', {
@@ -77,13 +112,48 @@ export async function POST(req: NextRequest) {
       pdfLength: policyPdf ? policyPdf.length : 0,
     });
 
+    // ── Store PDF to filesystem (Model B) ────────────────────────
+    let pdfStored = false;
+    let pdfPath: string | null = null;
+
+    if (status === 'SUCCESS' && policyPdf) {
+      try {
+        pdfPath = await storePolicyPdf(safeContractNumber, policyPdf);
+        pdfStored = true;
+        console.log(`[Allianz Callback] PDF stored: ${pdfPath}`);
+      } catch (storageErr) {
+        console.error('[Allianz Callback] PDF storage failed:', storageErr);
+      }
+    }
+
+    // ── Store metadata JSON for status lookups ───────────────────
+    const metadata: PolicyMetadata = {
+      contractNumber: safeContractNumber,
+      policyNumber: policyNumber || null,
+      status,
+      vehicleLicenseId: vehicleLicenseId || null,
+      pdfPath,
+      receivedAt: new Date().toISOString(),
+    };
+
+    try {
+      await storePolicyMetadata(metadata);
+      console.log(`[Allianz Callback] Metadata stored for contract ${contractNumber}`);
+    } catch (metaErr) {
+      console.error('[Allianz Callback] Metadata storage failed:', metaErr);
+    }
+
     if (status === 'SUCCESS' && policyNumber) {
       console.log(`[Allianz Callback] Policy issued: ${policyNumber} for contract ${contractNumber}`);
     } else if (status === 'FAILED') {
       console.error(`[Allianz Callback] Policy issuance FAILED for contract ${contractNumber}`);
     }
 
-    return NextResponse.json({ received: true, timestamp: new Date().toISOString() });
+    return NextResponse.json({
+      received: true,
+      pdfStored,
+      timestamp: new Date().toISOString(),
+    });
   } catch (err) {
     console.error('[Allianz Callback] Processing error:', err);
     return NextResponse.json({ received: false, error: 'Internal processing error' }, { status: 500 });

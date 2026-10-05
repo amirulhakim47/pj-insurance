@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { submitTransaction } from '@/lib/server/allianz-api';
+import {
+  assertVerifiedPaymentForSubmission,
+  consumeVerifiedPayment,
+  PaymentVerificationError,
+} from '@/lib/server/payment-records';
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 2000;
@@ -11,6 +16,7 @@ function delay(ms: number) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    const paymentOrderId = body.paymentOrderId as string | undefined;
 
     if (!body.contract?.contractNumber || !body.person || !body.payment) {
       return NextResponse.json(
@@ -19,11 +25,36 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (!paymentOrderId) {
+      return NextResponse.json(
+        { status: 403, code: 'PAYMENT_REQUIRED', message: 'Verified payment is required before submission' },
+        { status: 403 },
+      );
+    }
+
+    try {
+      await assertVerifiedPaymentForSubmission(
+        paymentOrderId,
+        body.contract.contractNumber,
+        body.payment.paymentAmount,
+      );
+    } catch (err) {
+      if (err instanceof PaymentVerificationError) {
+        return NextResponse.json(
+          { status: 403, code: 'PAYMENT_VERIFICATION_FAILED', message: err.message },
+          { status: 403 },
+        );
+      }
+      throw err;
+    }
+
     let lastError: any = null;
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
-        const result = await submitTransaction(body);
+        const { paymentOrderId: _omit, ...submissionBody } = body;
+        const result = await submitTransaction(submissionBody);
+        await consumeVerifiedPayment(paymentOrderId);
         return NextResponse.json(result);
       } catch (err: any) {
         lastError = err;
@@ -37,10 +68,10 @@ export async function POST(req: NextRequest) {
     }
 
     const status = lastError?.status || lastError?.response?.status || 500;
-    const data = lastError?.response?.data || { message: lastError?.message };
+    const data = lastError?.response?.data || { message: 'Submission failed' };
     return NextResponse.json(data, { status });
-  } catch (err: any) {
-    console.error('[submission] Error:', err.message);
-    return NextResponse.json({ message: err.message }, { status: 500 });
+  } catch {
+    console.error('[submission] Error');
+    return NextResponse.json({ message: 'Submission failed' }, { status: 500 });
   }
 }

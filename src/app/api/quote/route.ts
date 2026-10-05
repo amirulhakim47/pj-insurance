@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateQuote, updateQuote } from '@/lib/server/allianz-api';
+import { cacheQuoteFromAllianzResponse } from '@/lib/server/quote-sync';
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,6 +18,7 @@ export async function POST(req: NextRequest) {
     body.transactionType = body.transactionType || 'NWOO';
 
     const result = await generateQuote(body);
+    await cacheQuoteFromAllianzResponse(result);
     return NextResponse.json(result);
   } catch (err: any) {
     console.error('[quote POST] Error:', err.message);
@@ -42,6 +44,7 @@ export async function PUT(req: NextRequest) {
     body.transactionType = body.transactionType || 'NWOO';
 
     const result = await updateQuote(body);
+    await cacheQuoteFromAllianzResponse(result);
     return NextResponse.json(result);
   } catch (err: any) {
     console.error('[quote PUT] Error:', err.message);

@@ -20,7 +20,7 @@ export function Footer() {
               <span className="text-base font-bold tracking-tight text-foreground">HALLU</span>
             </Link>
             <p className="text-[13px] text-muted-foreground/80 leading-relaxed max-w-[260px]">
-              A registered digital intermediary of Allianz General Insurance Company (Malaysia) Berhad.
+              A registered agent of Allianz General Insurance Company (Malaysia) Berhad.
             </p>
           </div>
 

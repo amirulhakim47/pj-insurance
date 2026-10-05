@@ -15,11 +15,11 @@ export async function POST(req: NextRequest) {
     body.SourceSystem = process.env.ALLIANZ_PARTNER_ID ?? 'DCAUTO';
     body.CheckUbbInd = 2;
 
-    console.log('[CheckUBB] Request payload:', JSON.stringify(body, null, 2));
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[CheckUBB] Request received for ReferenceNo:', body.ReferenceNo);
+    }
 
     const result = await checkUBB(body);
-
-    console.log('[CheckUBB] Response:', JSON.stringify(result, null, 2));
 
     return NextResponse.json(result);
   } catch (err: any) {

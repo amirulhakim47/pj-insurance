@@ -14,7 +14,9 @@ import {
   Headphones,
   ShieldCheck, Settings, Crown,
 } from 'lucide-react';
+import { AllianzLogo } from '@/components/ui/allianz-logo';
 import { DataProtectionCard } from '@/components/ui/data-protection-card';
+import { ALLIANZ_DOCUMENTS } from '@/config/allianz-documents';
 
 const PACKAGES = [
   {
@@ -176,8 +178,7 @@ export default function LandingPage() {
         <Container size="xl" className="py-8">
           <div className="flex flex-col items-center justify-center gap-2.5">
             <span className="text-[11px] text-muted-foreground/70 font-medium uppercase tracking-[0.2em]">Powered by</span>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logos/Allianz-logo.png" alt="Allianz General Insurance" className="h-14 sm:h-16 w-auto object-contain" />
+            <AllianzLogo size="strip" centered={false} />
           </div>
         </Container>
       </section>
@@ -358,7 +359,7 @@ export default function LandingPage() {
               <CardContent className="text-sm text-muted-foreground leading-relaxed">
                 <p>
                   Benefits payable under eligible policies are protected by PIDM up to limits. Refer to{' '}
-                  <a href="https://www.pidm.gov.my/en/for-public/tips-brochure" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-0.5">
+                  <a href={ALLIANZ_DOCUMENTS.pidmTipsBrochure} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-0.5">
                     PIDM TIPS Brochure <ExternalLink className="w-3 h-3" />
                   </a>{' '}or visit{' '}
                   <a href="https://www.pidm.gov.my" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">www.pidm.gov.my</a>.
@@ -376,10 +377,10 @@ export default function LandingPage() {
               <CardContent className="text-sm text-muted-foreground">
                 <p className="mb-3">Review these documents before purchasing:</p>
                 <div className="flex flex-col sm:flex-row gap-3">
-                  <a href="/docs/allianz-motor-pds.pdf" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium inline-flex items-center gap-1.5 text-sm">
+                  <a href={ALLIANZ_DOCUMENTS.pds} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium inline-flex items-center gap-1.5 text-sm">
                     <FileText className="w-3.5 h-3.5" /> Product Disclosure Sheet <ExternalLink className="w-3 h-3" />
                   </a>
-                  <a href="https://www.allianz.com.my/motor-comprehensive-insurance" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium inline-flex items-center gap-1.5 text-sm">
+                  <a href={ALLIANZ_DOCUMENTS.policyWording} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium inline-flex items-center gap-1.5 text-sm">
                     <FileText className="w-3.5 h-3.5" /> Policy Wording <ExternalLink className="w-3 h-3" />
                   </a>
                 </div>

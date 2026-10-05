@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
+import { AllianzLogo } from '@/components/ui/allianz-logo';
 import { PageLayout, CenteredLayout, StepIndicator } from '@/components/ui/layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,8 @@ import type { QuotationResponse, VehicleDetailsResponse } from '@/types/allianz'
 import { ShieldCheck, ArrowLeft, Lock, AlertCircle, FileText, ExternalLink, Car, User } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { SENANGPAY_CONFIG, generateSenangPayHash } from '@/lib/senangpay';
+import { ALLIANZ_DOCUMENTS, AGENT_DISPLAY_NAME } from '@/config/allianz-documents';
+import { formatCoverageDate } from '@/lib/date-format';
 
 const STEPS = ['Vehicle Details', 'Quotation', 'Customer Info', 'Review & Pay'];
 
@@ -82,7 +85,12 @@ export default function PaymentPage() {
       const orderId = `ORDER-${quotation.contract.contractNumber}-${Date.now()}`;
       const formattedAmount = grandTotal.toFixed(2);
       const detail = `Motor_Insurance_${quotation.contract.contractNumber}`;
-      const { hash, merchantId } = await generateSenangPayHash(detail, formattedAmount, orderId);
+      const { hash, merchantId } = await generateSenangPayHash(
+        detail,
+        formattedAmount,
+        orderId,
+        quotation.contract.contractNumber,
+      );
 
       const paymentUrl = `https://sandbox.senangpay.my/payment/${merchantId}`;
       const form = document.createElement('form');
@@ -117,6 +125,7 @@ export default function PaymentPage() {
         <StepIndicator steps={STEPS} currentStep={3} />
 
         <div className="text-center mb-8 space-y-3">
+          <AllianzLogo />
           <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight">Review and Pay</h1>
           <p className="text-[15px] text-muted-foreground leading-relaxed max-w-lg mx-auto">Please review your details and total amount due before proceeding to payment.</p>
         </div>
@@ -144,8 +153,8 @@ export default function PaymentPage() {
                   <div className="flex justify-between"><span className="text-muted-foreground">Vehicle Maker</span><span className="font-medium">{vehicleDetails.vehicleMake}</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">Vehicle Model</span><span className="font-medium">{vehicleDetails.vehicleModelDesc || vehicleDetails.vehicleModel}</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">Engine CC</span><span className="font-medium">{vehicleDetails.vehicleEngineCC} CC</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Policy Start Date</span><span className="font-medium">{vehicleDetails.polEffectiveDate}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Policy End Date</span><span className="font-medium">{vehicleDetails.polExpiryDate}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Policy Start Date</span><span className="font-medium">{formatCoverageDate(vehicleDetails.polEffectiveDate)}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Policy End Date</span><span className="font-medium">{formatCoverageDate(vehicleDetails.polExpiryDate)}</span></div>
                 </CardContent>
               </Card>
             )}
@@ -172,9 +181,9 @@ export default function PaymentPage() {
                     <input type="checkbox" id="pds-acknowledgment" checked={pdsAcknowledged} onChange={(e) => setPdsAcknowledged(e.target.checked)} className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" />
                     <span className="text-xs text-muted-foreground leading-relaxed">
                       I confirm that I have read and understood the{' '}
-                      <a href="/docs/allianz-motor-pds.pdf" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-0.5">Product Disclosure Sheet <ExternalLink className="w-2.5 h-2.5" /></a>,{' '}
-                      <a href="https://www.allianz.com.my/motor-comprehensive-insurance" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-0.5">Policy Wording <ExternalLink className="w-2.5 h-2.5" /></a>{' '}&amp;{' '}
-                      <a href="https://www.allianz.com.my/privacy-statement" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-0.5">Privacy Notice <ExternalLink className="w-2.5 h-2.5" /></a>{' '}and agree to the processing of my personal data.
+                      <a href={ALLIANZ_DOCUMENTS.pds} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-0.5">Product Disclosure Sheet <ExternalLink className="w-2.5 h-2.5" /></a>,{' '}
+                      <a href={ALLIANZ_DOCUMENTS.policyWording} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-0.5">Policy Wording <ExternalLink className="w-2.5 h-2.5" /></a>{' '}&amp;{' '}
+                      <a href={ALLIANZ_DOCUMENTS.privacyNotice} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-0.5">Privacy Notice <ExternalLink className="w-2.5 h-2.5" /></a>{' '}and agree to the processing of my personal data.
                     </span>
                   </label>
 
@@ -241,7 +250,7 @@ export default function PaymentPage() {
                 </div>
 
                 <p className="text-[11px] text-muted-foreground italic">* Excess of RM {premium.excessAmount.toFixed(0)} is applicable</p>
-                <p className="text-[11px] text-muted-foreground italic">* {premium.commissionPercentage}% of Commission amounting to RM {premium.commissionAmount.toFixed(2)} is payable to Allianz Contact Centre</p>
+                <p className="text-[11px] text-muted-foreground italic">* {premium.commissionPercentage}% of commission amounting to RM {premium.commissionAmount.toFixed(2)} is payable to {AGENT_DISPLAY_NAME}</p>
               </CardContent>
             </Card>
           </div>

@@ -38,9 +38,13 @@ yarn-error.log*
 .env.local
 .env*.local
 
+# policy PDF storage (runtime data on VPS)
+/data/
+
 # vercel
 .vercel
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+.env*

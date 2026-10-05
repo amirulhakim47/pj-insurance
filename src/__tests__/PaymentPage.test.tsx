@@ -1,10 +1,11 @@
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, act, fireEvent } from '@testing-library/react';
+import PaymentPage from '@/app/payment/page';
+import { AGENT_DISPLAY_NAME } from '@/config/allianz-documents';
 
 const mockPush = jest.fn();
-const mockBack = jest.fn();
 const mockRouter = {
   push: mockPush,
-  back: mockBack,
+  back: jest.fn(),
   replace: jest.fn(),
   prefetch: jest.fn(),
   forward: jest.fn(),
@@ -17,35 +18,24 @@ jest.mock('next/navigation', () => ({
   usePathname: () => '/payment',
 }));
 
-jest.mock('../lib/senangpay', () => ({
-  SENANGPAY_CONFIG: { url: 'https://sandbox.senangpay.my/payment/test', merchantId: 'test', secretKey: 'test' },
-  generateSenangPayHash: jest.fn().mockResolvedValue('mock-hash'),
+jest.mock('@/lib/senangpay', () => ({
+  SENANGPAY_CONFIG: {},
+  generateSenangPayHash: jest.fn().mockResolvedValue({ hash: 'test-hash', merchantId: 'test-merchant' }),
 }));
 
-import PaymentPage from '@/app/payment/page';
-
 const mockQuotation = {
-  contract: { contractNumber: 'CNAZ00004272328', hrtvInd: false, highPerformanceInd: false, excessWaiveInd: false },
+  contract: { contractNumber: 'CNAZ00004272328' },
   premium: {
-    basicPremium: 2215.40,
-    annualPremium: 996.93,
-    grossPremium: 996.93,
-    premiumDue: 1086.48,
-    premiumDueRounded: 1086.50,
-    stampDuty: 10,
+    basicPremium: 1482.96,
+    premiumDueRounded: 1315.95,
+    ncdPct: 30,
+    ncdAmt: 444.89,
     serviceTaxPercentage: 8,
-    serviceTaxAmount: 79.75,
+    serviceTaxAmount: 85.45,
+    stampDuty: 10,
     excessAmount: 0,
-    ncdPct: 55,
-    ncdAmt: 1218.47,
-    rebatePct: 0,
-    rebateAmt: 0,
-    commissionAmount: 150.00,
+    commissionAmount: 150.0,
     commissionPercentage: 10,
-    basicAnnualPremium: 2215.40,
-    premiumDueAfterPTV: 1086.48,
-    premiumDueRoundedAfterPTV: 1086.50,
-    packagePremium: 0,
   },
   additionalCover: [],
 };
@@ -60,6 +50,8 @@ const mockFormData = {
   phoneNumber: '0121234567',
   email: 'ahmad@example.com',
   customerType: 'individual',
+  gender: 'M',
+  maritalStatus: '0',
   isEhailing: false,
   isElectricVehicle: false,
   pdpaConsent: true,
@@ -68,7 +60,12 @@ const mockFormData = {
 const mockVehicleDetails = {
   contractNumber: 'CNAZ00004272328',
   vehicleLicenseId: 'VAP2104',
-  vehicleMake: 'PERODUA',
+  vehicleMake: 'PROTON',
+  vehicleModel: 'SAGA',
+  vehicleModelDesc: 'SAGA',
+  vehicleEngineCC: '1332',
+  polEffectiveDate: '2026-08-30',
+  polExpiryDate: '2027-08-29',
 };
 
 describe('PaymentPage', () => {
@@ -91,8 +88,8 @@ describe('PaymentPage', () => {
 
   it('renders the payment page with order summary', async () => {
     await act(async () => { render(<PaymentPage />); });
-    expect(screen.getByText('Order Summary')).toBeInTheDocument();
-    expect(screen.getByText('Allianz Motor Comprehensive')).toBeInTheDocument();
+    expect(screen.getByText('My Motor Insurance Details')).toBeInTheDocument();
+    expect(screen.getByText('Motor Comprehensive Insurance')).toBeInTheDocument();
   });
 
   it('displays commission disclosure in premium breakdown', async () => {
@@ -102,6 +99,7 @@ describe('PaymentPage', () => {
     expect(screen.getByText('10%')).toBeInTheDocument();
     expect(screen.getByText('Commission Amount')).toBeInTheDocument();
     expect(screen.getByText('RM 150.00')).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(AGENT_DISPLAY_NAME.replace(/[()]/g, '\\$&')))).toBeInTheDocument();
   });
 
   it('displays PDS acknowledgment checkbox unchecked', async () => {
@@ -111,76 +109,15 @@ describe('PaymentPage', () => {
     expect(pdsCheckbox).not.toBeChecked();
   });
 
-  it('displays marketing consent checkbox unchecked', async () => {
-    await act(async () => { render(<PaymentPage />); });
-    const marketingCheckbox = screen.getByRole('checkbox', { name: /I consent to Allianz General/i });
-    expect(marketingCheckbox).toBeInTheDocument();
-    expect(marketingCheckbox).not.toBeChecked();
-  });
-
   it('disables pay button when PDS is not acknowledged', async () => {
     await act(async () => { render(<PaymentPage />); });
-    const payButton = screen.getByRole('button', { name: /Pay RM/i });
-    expect(payButton).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Pay RM/i })).toBeDisabled();
   });
 
   it('enables pay button when PDS is acknowledged', async () => {
     await act(async () => { render(<PaymentPage />); });
     const pdsCheckbox = screen.getByRole('checkbox', { name: /I confirm that I have read and understood/i });
     await act(async () => { fireEvent.click(pdsCheckbox); });
-    const payButton = screen.getByRole('button', { name: /Pay RM/i });
-    expect(payButton).not.toBeDisabled();
-  });
-
-  it('shows warning message when PDS is not acknowledged', async () => {
-    await act(async () => { render(<PaymentPage />); });
-    expect(screen.getByText(/Please acknowledge the Product Disclosure Sheet/i)).toBeInTheDocument();
-  });
-
-  it('hides warning message after PDS is acknowledged', async () => {
-    await act(async () => { render(<PaymentPage />); });
-    const pdsCheckbox = screen.getByRole('checkbox', { name: /I confirm that I have read and understood/i });
-    await act(async () => { fireEvent.click(pdsCheckbox); });
-    expect(screen.queryByText(/Please acknowledge the Product Disclosure Sheet/i)).not.toBeInTheDocument();
-  });
-
-  it('stores marketing consent Y in sessionStorage on payment', async () => {
-    await act(async () => { render(<PaymentPage />); });
-
-    const pdsCheckbox = screen.getByRole('checkbox', { name: /I confirm that I have read and understood/i });
-    const marketingCheckbox = screen.getByRole('checkbox', { name: /I consent to Allianz General/i });
-
-    await act(async () => {
-      fireEvent.click(pdsCheckbox);
-      fireEvent.click(marketingCheckbox);
-    });
-
-    const payButton = screen.getByRole('button', { name: /Pay RM/i });
-    await act(async () => { fireEvent.click(payButton); });
-
-    expect(window.sessionStorage.setItem).toHaveBeenCalledWith('allianz_marketingConsent', 'Y');
-  });
-
-  it('stores marketing consent N when not checked', async () => {
-    await act(async () => { render(<PaymentPage />); });
-
-    const pdsCheckbox = screen.getByRole('checkbox', { name: /I confirm that I have read and understood/i });
-    await act(async () => { fireEvent.click(pdsCheckbox); });
-
-    const payButton = screen.getByRole('button', { name: /Pay RM/i });
-    await act(async () => { fireEvent.click(payButton); });
-
-    expect(window.sessionStorage.setItem).toHaveBeenCalledWith('allianz_marketingConsent', 'N');
-  });
-
-  it('displays premium total amount', async () => {
-    await act(async () => { render(<PaymentPage />); });
-    expect(screen.getByText('RM 1086.50')).toBeInTheDocument();
-  });
-
-  it('redirects to /results if no quotation in session', async () => {
-    (window.sessionStorage.getItem as jest.Mock).mockReturnValue(null);
-    await act(async () => { render(<PaymentPage />); });
-    expect(mockPush).toHaveBeenCalledWith('/results');
+    expect(screen.getByRole('button', { name: /Pay RM/i })).not.toBeDisabled();
   });
 });

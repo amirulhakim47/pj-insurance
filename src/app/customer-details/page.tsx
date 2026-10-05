@@ -4,6 +4,7 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { AllianzLogo } from '@/components/ui/allianz-logo';
 import { PageLayout, Container, StepIndicator } from '@/components/ui/layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -98,10 +99,15 @@ export default function CustomerDetailsPage() {
     setValue('identityNumber', parsed.nric.replace(/-/g, ''));
     setValue('email', parsed.email || '');
     setValue('postcode', parsed.postcode || '');
+    const formMaritalStatus = (parsed as InsuranceFormData & { maritalStatus?: string }).maritalStatus;
+    if (formMaritalStatus) setValue('maritalStatus', formMaritalStatus as '0' | '1' | '2' | '3');
+
+    if (parsed.nationality) setValue('nationality', parsed.nationality);
+    if (parsed.gender && parsed.gender !== 'C') setValue('gender', parsed.gender);
 
     if (idType === 'NRIC') {
       setValue('dateOfBirth', extractBirthDateFromNRIC(parsed.nric));
-      setValue('gender', extractGenderFromNRIC(parsed.nric));
+      setValue('gender', parsed.gender && parsed.gender !== 'C' ? parsed.gender : extractGenderFromNRIC(parsed.nric));
       setValue('nationality', 'MALAYSIA');
     }
 
@@ -165,6 +171,7 @@ export default function CustomerDetailsPage() {
 
         <div className="max-w-2xl mx-auto space-y-6">
           <div className="text-center space-y-3">
+            <AllianzLogo />
             <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Policyholder details</h1>
             <p className="text-[15px] text-muted-foreground leading-relaxed">Confirm your personal details for the insurance policy.</p>
           </div>
@@ -189,7 +196,7 @@ export default function CustomerDetailsPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div><label className="text-sm font-medium" htmlFor="gender">Gender *</label><select id="gender" {...register('gender')} disabled={isNRIC} className={isNRIC ? readonlyClass : inputClass}><option value="M">Male</option><option value="F">Female</option>{formData.customerType === 'company' && <option value="C">Company</option>}</select></div>
-                  <div><label className="text-sm font-medium" htmlFor="maritalStatus">Marital Status *</label><select id="maritalStatus" {...register('maritalStatus')} className={inputClass}>{MARITAL_STATUS_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select>{errors.maritalStatus && <p className="text-xs text-destructive mt-1">{errors.maritalStatus.message}</p>}</div>
+                  <div><label className="text-sm font-medium" htmlFor="maritalStatus">Marital Status *</label><select id="maritalStatus" {...register('maritalStatus')} disabled className={readonlyClass}>{MARITAL_STATUS_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select>{errors.maritalStatus && <p className="text-xs text-destructive mt-1">{errors.maritalStatus.message}</p>}</div>
                 </div>
               </CardContent>
             </Card>
@@ -221,7 +228,7 @@ export default function CustomerDetailsPage() {
                 <div className="grid grid-cols-3 gap-3">
                   <div>
                     <label className="text-sm font-medium" htmlFor="postcode">Postcode *</label>
-                    <input id="postcode" {...register('postcode')} className={inputClass} maxLength={5} />
+                    <input id="postcode" {...register('postcode')} readOnly className={readonlyClass} maxLength={5} />
                     {postcodeChecking && <p className="text-xs text-muted-foreground mt-1">Validating...</p>}
                     {postcodeValid === false && <p className="text-xs text-destructive mt-1">Invalid postcode</p>}
                   </div>

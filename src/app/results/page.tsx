@@ -3,11 +3,33 @@
 import * as React from 'react';
 import { Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { AllianzLogo } from '@/components/ui/allianz-logo';
 import { PageLayout, Container, StepIndicator } from '@/components/ui/layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, CreditCard, Check, Shield, Car, Info, FileText, ExternalLink, ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
 import { generateQuote, getLOV, checkUBB, updateQuote } from '@/lib/allianz-api';
+import { formatCoveragePeriod } from '@/lib/date-format';
+import {
+  buildAdditionalCoverPayload,
+  clampWindscreenSumInsured,
+  clampGasKitSumInsured,
+  defaultAddonInputsForCover,
+  groupAvVariantsBySumInsured,
+  avTierLabel,
+  WINDSCREEN_MIN_SI,
+  WINDSCREEN_MAX_SI,
+  GAS_KIT_MAX_SI,
+  type AddonInputState,
+} from '@/lib/addon-quote';
+import { applyDemoQuoteUpdate } from '@/lib/demo-quote';
+import {
+  ALLIANZ_DOCUMENTS,
+  AGENT_DISPLAY_NAME,
+  RAHMAH_MAX_ENGINE_CC,
+  RAHMAH_MAX_SUM_INSURED,
+  RAHMAH_PACKAGE_CODE,
+} from '@/config/allianz-documents';
 import type { InsuranceFormData } from '@/types';
 import type {
   VehicleDetailsResponse,
@@ -48,6 +70,16 @@ const ADDON_TOOLTIPS: Record<string, { text: string; link?: string }> = {
 const UPFRONT_COVER_CODES = new Set(['PAB-ERW', '89', 'A202', '72']);
 const UPFRONT_MAX_SEQUENCE = 6;
 
+function isCoverHidden(c: AdditionalCoverItem): boolean {
+  return c.azolHiddenInd === 1;
+}
+
+function resolvePersonGender(formData: InsuranceFormData): Gender {
+  if (formData.customerType === 'company') return 'C';
+  if (formData.gender === 'M' || formData.gender === 'F') return formData.gender;
+  return extractGenderFromNRIC(formData.nric);
+}
+
 interface AdditionalDriverInfo {
   fullName: string;
   nationality: string;
@@ -63,7 +95,8 @@ const NATIONALITY_OPTIONS = [
 const DEMO_FORM_DATA: InsuranceFormData = {
   fullName: 'DEMO USER', vehicleType: 'car', plateNumber: 'VAP2104', nric: '841103-01-1116',
   postcode: '50000', customerType: 'individual', identityType: 'NRIC', email: 'demo@example.com',
-  phoneNumber: '0121234567', isEhailing: false, isElectricVehicle: false, pdpaConsent: true,
+  phoneNumber: '0121234567', gender: 'M', nationality: 'MALAYSIA', maritalStatus: '0',
+  isEhailing: false, isElectricVehicle: false, pdpaConsent: true,
 };
 
 const DEMO_VEHICLE: VehicleDetailsResponse = {
@@ -161,7 +194,8 @@ export default function ResultsPageWrapper() {
 function ResultsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const isDemo = searchParams.get('demo') === 'true';
+  const isDemo =
+    process.env.NEXT_PUBLIC_ALLOW_DEMO === 'true' && searchParams.get('demo') === 'true';
   const [formData, setFormData] = React.useState<InsuranceFormData | null>(null);
   const [vehicleDetails, setVehicleDetails] = React.useState<VehicleDetailsResponse | null>(null);
   const [selectedNvic, setSelectedNvic] = React.useState<NvicItem | null>(null);
@@ -186,11 +220,21 @@ function ResultsPage() {
   const [driverPlan, setDriverPlan] = React.useState<'0' | '1' | '2' | 'unlimited'>('0');
   const [additionalDrivers, setAdditionalDrivers] = React.useState<AdditionalDriverInfo[]>([]);
   const [ehailingDriver, setEhailingDriver] = React.useState<{ fullName: string; idNumber: string }>({ fullName: '', idNumber: '' });
+  const [rahmahApplied, setRahmahApplied] = React.useState(false);
+  const [pendingAddonSync, setPendingAddonSync] = React.useState(false);
+  const addonSyncTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const groupedAvVariants = React.useMemo(
+    () => groupAvVariantsBySumInsured(avVariants),
+    [avVariants],
+  );
 
   React.useEffect(() => {
     if (isDemo) {
       setFormData(DEMO_FORM_DATA);
       setVehicleDetails(DEMO_VEHICLE);
+      sessionStorage.setItem('insuranceFormData', JSON.stringify(DEMO_FORM_DATA));
+      sessionStorage.setItem('allianz_vehicleDetails', JSON.stringify(DEMO_VEHICLE));
       const recommended = DEMO_VEHICLE.nvicList.find((n) => n.recommendInd === 'Y');
       if (recommended) setSelectedNvic(recommended);
       return;
@@ -295,10 +339,17 @@ function ResultsPage() {
           }
         }
 
-        const birthDate = extractBirthDateFromNRIC(formData.nric);
-        const gender = formData.customerType === 'company' ? 'C' as Gender : extractGenderFromNRIC(formData.nric);
-        const maritalStatus: MaritalStatus = formData.customerType === 'company' ? '3' : '0';
+        const birthDate =
+          formData.identityType === 'NRIC'
+            ? extractBirthDateFromNRIC(formData.nric)
+            : extractBirthDateFromNRIC(formData.nric);
+        const gender = resolvePersonGender(formData);
+        const maritalStatus: MaritalStatus =
+          formData.maritalStatus || (formData.customerType === 'company' ? '3' : '0');
         const sumInsured = useAv ? selectedAvVariant!.SumInsured : selectedNvic!.vehicleMarketValue.toFixed(2);
+        const engineCc =
+          parseInt(vehicleDetails.vehicleEngineCC, 10) ||
+          parseInt(selectedNvic?.vehicleEngineCC || selectedAvVariant?.VehicleEngineCC?.toString() || '0', 10);
 
         result = await generateQuote({
           transactionType: 'NWOO', contractNumber: vehicleDetails.contractNumber,
@@ -307,12 +358,37 @@ function ResultsPage() {
           vehicle: {
             vehicleLicenseId: vehicleDetails.vehicleLicenseId, vehicleMake: vehicleDetails.makeCode,
             vehicleModel: vehicleDetails.modelCode,
-            vehicleEngineCC: parseInt(vehicleDetails.vehicleEngineCC, 10) || parseInt(selectedNvic?.vehicleEngineCC || selectedAvVariant?.VehicleEngineCC?.toString() || '0', 10),
+            vehicleEngineCC: engineCc,
             yearOfManufacture: vehicleDetails.yearOfManufacture, occupantsNumber: vehicleDetails.seatingCapacity,
             ncdPercentage: vehicleDetails.ncdPercentage, sumInsured,
             avCode: useAv ? selectedAvVariant!.AvCode : '', mvInd: useAv ? 'N' : 'Y',
           },
         });
+
+        const siNum = parseFloat(sumInsured);
+        const rahmahFromApi =
+          result.packageCodes?.find((c) => c.toUpperCase().includes('RAHMAH')) ?? null;
+        const eligibleRahmah =
+          siNum <= RAHMAH_MAX_SUM_INSURED && engineCc <= RAHMAH_MAX_ENGINE_CC;
+        const packageToApply = rahmahFromApi ?? (eligibleRahmah ? RAHMAH_PACKAGE_CODE : null);
+
+        if (packageToApply) {
+          try {
+            result = await updateQuote({
+              transactionType: 'NWOO',
+              contractNumber: vehicleDetails.contractNumber,
+              effectiveDate: vehicleDetails.polEffectiveDate,
+              expirationDate: vehicleDetails.polExpiryDate,
+              packageCode: packageToApply,
+              additionalCover: [],
+            });
+            setRahmahApplied(true);
+          } catch {
+            setRahmahApplied(false);
+          }
+        } else {
+          setRahmahApplied(false);
+        }
       }
 
       setQuotation(result);
@@ -352,62 +428,140 @@ function ResultsPage() {
     return quotation.premium.premiumDueRounded;
   }, [quotation]);
 
+  const runQuoteUpdate = React.useCallback(
+    async (
+      selected: Set<string>,
+      inputs: Record<string, AddonInputState>,
+      plan: typeof driverPlan,
+      drivers: AdditionalDriverInfo[],
+    ) => {
+      if (!quotation || !vehicleDetails) return;
+      setIsUpdatingQuote(true);
+      setPendingAddonSync(false);
+      try {
+        if (isDemo) {
+          await new Promise((r) => setTimeout(r, 350));
+          const updated = applyDemoQuoteUpdate(
+            quotation,
+            selected,
+            inputs,
+            plan,
+            rahmahApplied,
+          );
+          setQuotation(updated);
+          sessionStorage.setItem('allianz_quotation', JSON.stringify(updated));
+          return;
+        }
+        const additionalCover = buildAdditionalCoverPayload(
+          quotation.additionalCover,
+          selected,
+          inputs,
+        );
+        const updatedQuote = await updateQuote({
+          transactionType: 'NWOO',
+          contractNumber: quotation.contract.contractNumber,
+          effectiveDate: vehicleDetails.polEffectiveDate,
+          expirationDate: vehicleDetails.polExpiryDate,
+          ...(rahmahApplied ? { packageCode: RAHMAH_PACKAGE_CODE } : {}),
+          additionalCover,
+          unlimitedDriverInd: plan === 'unlimited',
+          driverDetails:
+            plan !== '0' && plan !== 'unlimited'
+              ? drivers.map((d) => ({ fullName: d.fullName, identityNumber: d.idNumber }))
+              : undefined,
+        });
+        setQuotation(updatedQuote);
+        sessionStorage.setItem('allianz_quotation', JSON.stringify(updatedQuote));
+      } catch (err) {
+        console.error('Update quotation error:', err);
+      } finally {
+        setIsUpdatingQuote(false);
+      }
+    },
+    [quotation, vehicleDetails, rahmahApplied, isDemo],
+  );
+
+  React.useEffect(() => {
+    if (!quotation || selectedAddons.size === 0) return;
+    if (addonSyncTimer.current) clearTimeout(addonSyncTimer.current);
+    setPendingAddonSync(true);
+    addonSyncTimer.current = setTimeout(() => {
+      runQuoteUpdate(selectedAddons, addonInputs, driverPlan, additionalDrivers);
+    }, 400);
+    return () => {
+      if (addonSyncTimer.current) clearTimeout(addonSyncTimer.current);
+    };
+  }, [addonInputs, driverPlan, additionalDrivers]); // eslint-disable-line react-hooks/exhaustive-deps -- selectedAddons synced via toggle
+
   const handleToggleAddon = async (cover: AdditionalCoverItem) => {
     if (!quotation || !vehicleDetails || isUpdatingQuote) return;
 
     const newSelected = new Set(selectedAddons);
-    if (newSelected.has(cover.coverCode)) newSelected.delete(cover.coverCode);
-    else newSelected.add(cover.coverCode);
+    const adding = !newSelected.has(cover.coverCode);
+    if (adding) {
+      newSelected.add(cover.coverCode);
+      setAddonInputs((prev) => ({
+        ...prev,
+        [cover.coverCode]: {
+          ...defaultAddonInputsForCover(cover),
+          ...prev[cover.coverCode],
+        },
+      }));
+    } else {
+      newSelected.delete(cover.coverCode);
+    }
     setSelectedAddons(newSelected);
 
     if (cover.coverCode === 'A202' && !newSelected.has('A202')) {
       setEhailingDriver({ fullName: '', idNumber: '' });
     }
 
-    setIsUpdatingQuote(true);
-    try {
-      const additionalCover = quotation.additionalCover
-        .filter((c) => newSelected.has(c.coverCode))
-        .map((c) => {
-          const inputs = addonInputs[c.coverCode];
-          return {
-            coverCode: c.coverCode,
-            coverSumInsured: inputs?.sumInsured ?? c.coverSumInsured,
-            ...(inputs?.cartDay && { cartDay: inputs.cartDay }),
-            ...(inputs?.cartAmount && { cartAmount: inputs.cartAmount }),
-            ...(inputs?.planCode && { planCode: inputs.planCode }),
-          };
-        });
+    const nextInputs = adding
+      ? {
+          ...addonInputs,
+          [cover.coverCode]: {
+            ...defaultAddonInputsForCover(cover),
+            ...addonInputs[cover.coverCode],
+          },
+        }
+      : addonInputs;
 
-      const updatedQuote = await updateQuote({
-        transactionType: 'NWOO', contractNumber: quotation.contract.contractNumber,
-        effectiveDate: vehicleDetails.polEffectiveDate, expirationDate: vehicleDetails.polExpiryDate,
-        additionalCover,
-        unlimitedDriverInd: driverPlan === 'unlimited',
-        driverDetails: driverPlan !== '0' && driverPlan !== 'unlimited' ? additionalDrivers.map((d) => ({ fullName: d.fullName, identityNumber: d.idNumber })) : undefined,
-      });
-
-      setQuotation(updatedQuote);
-      sessionStorage.setItem('allianz_quotation', JSON.stringify(updatedQuote));
-    } catch (err) { console.error('Update quotation error:', err); }
-    finally { setIsUpdatingQuote(false); }
+    await runQuoteUpdate(newSelected, nextInputs, driverPlan, additionalDrivers);
   };
 
   const handleAddonInputChange = (coverCode: string, field: string, value: string) => {
-    setAddonInputs((prev) => ({
-      ...prev,
-      [coverCode]: { ...prev[coverCode], [field]: field === 'sumInsured' ? parseInt(value, 10) || 0 : value },
-    }));
+    setAddonInputs((prev) => {
+      const next = { ...prev[coverCode] };
+      if (field === 'sumInsured') {
+        const raw = parseInt(value, 10) || 0;
+        next.sumInsured =
+          coverCode === '89'
+            ? clampWindscreenSumInsured(raw)
+            : coverCode === '97A'
+              ? clampGasKitSumInsured(raw)
+              : raw;
+      } else {
+        (next as Record<string, string>)[field] = value;
+      }
+      return { ...prev, [coverCode]: next };
+    });
   };
 
-  const handleDriverPlanChange = (plan: '0' | '1' | '2' | 'unlimited') => {
+  const handleDriverPlanChange = async (plan: '0' | '1' | '2' | 'unlimited') => {
     setDriverPlan(plan);
-    if (plan === '1') setAdditionalDrivers([{ fullName: '', nationality: 'MALAYSIA', idType: 'NRIC', idNumber: '' }]);
-    else if (plan === '2') setAdditionalDrivers([
-      { fullName: '', nationality: 'MALAYSIA', idType: 'NRIC', idNumber: '' },
-      { fullName: '', nationality: 'MALAYSIA', idType: 'NRIC', idNumber: '' },
-    ]);
-    else setAdditionalDrivers([]);
+    let drivers: AdditionalDriverInfo[] = [];
+    if (plan === '1') {
+      drivers = [{ fullName: '', nationality: 'MALAYSIA', idType: 'NRIC', idNumber: '' }];
+    } else if (plan === '2') {
+      drivers = [
+        { fullName: '', nationality: 'MALAYSIA', idType: 'NRIC', idNumber: '' },
+        { fullName: '', nationality: 'MALAYSIA', idType: 'NRIC', idNumber: '' },
+      ];
+    }
+    setAdditionalDrivers(drivers);
+    if (quotation) {
+      await runQuoteUpdate(selectedAddons, addonInputs, plan, drivers);
+    }
   };
 
   const updateDriverInfo = (index: number, field: keyof AdditionalDriverInfo, value: string) => {
@@ -431,7 +585,7 @@ function ResultsPage() {
   const isUpfront = (cover: AdditionalCoverItem) =>
     cover.sequence <= UPFRONT_MAX_SEQUENCE || UPFRONT_COVER_CODES.has(cover.coverCode);
 
-  const visibleCovers = quotation?.additionalCover?.filter((c) => c.azolHiddenInd !== 1) || [];
+  const visibleCovers = quotation?.additionalCover?.filter((c) => !isCoverHidden(c)) || [];
   const upfrontCovers = visibleCovers.filter(isUpfront);
   const moreCovers = visibleCovers.filter((c) => !isUpfront(c));
 
@@ -444,9 +598,20 @@ function ResultsPage() {
       <Container className="py-8 sm:py-10">
         <StepIndicator steps={STEPS} currentStep={1} />
 
+        {isDemo && (
+          <div
+            role="status"
+            className="mb-6 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-foreground"
+          >
+            <strong className="font-semibold">Demo mode (UAT).</strong> Sample vehicle and premiums — not from Allianz.
+            Use this to walk through quotation, add-ons, customer details, and payment UI when live test data is unavailable.
+          </div>
+        )}
+
         <div className="space-y-8">
           {/* Header */}
           <div className="text-center space-y-3">
+            <AllianzLogo />
             <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
               {quotation ? 'Your insurance quote' : 'Confirm your vehicle'}
             </h1>
@@ -471,7 +636,7 @@ function ResultsPage() {
                   <div><span className="text-muted-foreground text-xs">Engine</span><p className="font-semibold">{vehicleDetails.vehicleEngineCC} CC</p></div>
                   <div><span className="text-muted-foreground text-xs">No Claim Discount</span><p className="font-semibold text-green-600">{vehicleDetails.ncdPercentage}%</p></div>
                   <div><span className="text-muted-foreground text-xs">Coverage Type</span><p className="font-semibold">{vehicleDetails.coverType || 'Comprehensive'}</p></div>
-                  <div className="col-span-2 pt-2 mt-1 border-t border-border/40"><span className="text-muted-foreground text-xs">Coverage Period</span><p className="font-medium text-sm">{vehicleDetails.polEffectiveDate} to {vehicleDetails.polExpiryDate}</p></div>
+                  <div className="col-span-2 pt-2 mt-1 border-t border-border/40"><span className="text-muted-foreground text-xs">Coverage Period</span><p className="font-medium text-sm">{formatCoveragePeriod(vehicleDetails.polEffectiveDate, vehicleDetails.polExpiryDate)}</p></div>
                   <div className="col-span-2"><span className="text-muted-foreground text-xs">Current Insurer</span><p className="font-medium text-sm">{vehicleDetails.currInsurer}</p></div>
                 </div>
               </CardContent>
@@ -491,10 +656,10 @@ function ResultsPage() {
                         Read the PDS before purchasing. It explains what is covered, fees, and important exclusions.
                       </p>
                       <div className="flex gap-4 mt-2">
-                        <a href="/docs/allianz-motor-pds.pdf" target="_blank" rel="noopener noreferrer" className="text-xs text-primary font-medium hover:underline inline-flex items-center gap-1">
-                          View PDS (PDF) <ExternalLink className="w-2.5 h-2.5" />
+                        <a href={ALLIANZ_DOCUMENTS.pds} target="_blank" rel="noopener noreferrer" className="text-xs text-primary font-medium hover:underline inline-flex items-center gap-1">
+                          View PDS <ExternalLink className="w-2.5 h-2.5" />
                         </a>
-                        <a href="https://www.allianz.com.my/motor-comprehensive-insurance" target="_blank" rel="noopener noreferrer" className="text-xs text-primary font-medium hover:underline inline-flex items-center gap-1">
+                        <a href={ALLIANZ_DOCUMENTS.policyWording} target="_blank" rel="noopener noreferrer" className="text-xs text-primary font-medium hover:underline inline-flex items-center gap-1">
                           Policy Wording <ExternalLink className="w-2.5 h-2.5" />
                         </a>
                       </div>
@@ -516,7 +681,7 @@ function ResultsPage() {
                   </div>
                   <div className="flex justify-center gap-2">
                     <button onClick={() => { setSiBasis('MV'); setQuotation(null); }} className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors ${siBasis === 'MV' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}>Market Value</button>
-                    <button onClick={() => { setSiBasis('AV'); setQuotation(null); }} disabled={isReconditioned === true} className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors ${siBasis === 'AV' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'} disabled:opacity-50 disabled:cursor-not-allowed`}>Agreed Value</button>
+                    <button onClick={() => { setSiBasis('AV'); setQuotation(null); }} className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors ${siBasis === 'AV' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}>Agreed Value</button>
                   </div>
 
                   {/* Reconditioned declaration with tooltip */}
@@ -541,9 +706,8 @@ function ResultsPage() {
                     )}
                     <div className="flex gap-4">
                       <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="radio" name="reconditioned" checked={isReconditioned === false} onChange={() => setIsReconditioned(false)} className="text-primary" /><span>No</span></label>
-                      <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="radio" name="reconditioned" checked={isReconditioned === true} onChange={() => { setIsReconditioned(true); setSiBasis('MV'); }} className="text-primary" /><span>Yes</span></label>
+                      <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="radio" name="reconditioned" checked={isReconditioned === true} onChange={() => setIsReconditioned(true)} className="text-primary" /><span>Yes</span></label>
                     </div>
-                    {isReconditioned === true && <p className="text-xs text-amber-700 mt-2">Reconditioned vehicles are only eligible for Market Value basis.</p>}
                   </div>
                 </div>
               )}
@@ -556,10 +720,13 @@ function ResultsPage() {
                     <p className="text-xs text-muted-foreground">Choose the variant and sum insured.</p>
                   </div>
                   <div className="space-y-2">
-                    {avVariants.map((av) => (
+                    {groupedAvVariants.map((av, idx) => (
                       <button key={av.AvCode} onClick={() => setSelectedAvVariant(av)} className={`w-full text-left p-3.5 rounded-xl border-2 transition-all duration-300 ${selectedAvVariant?.AvCode === av.AvCode ? 'border-primary bg-primary/5 shadow-md shadow-primary/5' : 'border-border/40 hover:border-primary/30 hover:shadow-sm'}`}>
                         <div className="flex items-center justify-between">
-                          <div><p className="font-medium text-sm">{av.Variant}</p><p className="text-xs text-muted-foreground">{av.VehicleEngineCC} CC | {av.MakeYear}</p></div>
+                          <div>
+                            <p className="font-medium text-sm">{avTierLabel(idx, groupedAvVariants.length)} — {av.Variant}</p>
+                            <p className="text-xs text-muted-foreground">{av.VehicleEngineCC} CC | {av.MakeYear}</p>
+                          </div>
                           <div className="text-right"><p className="font-bold text-base">RM {parseFloat(av.SumInsured).toLocaleString('en-MY')}</p><p className="text-[10px] text-muted-foreground uppercase">Sum Insured</p></div>
                         </div>
                       </button>
@@ -612,6 +779,12 @@ function ResultsPage() {
           {/* ═══ Quotation Display ═══ */}
           {quotation && (
             <div className="max-w-3xl mx-auto space-y-6">
+              {rahmahApplied && (
+                <div className="max-w-lg mx-auto rounded-xl border border-green-200 bg-green-50/60 px-4 py-3 text-center text-sm text-green-900">
+                  Rahmah package applied for eligible vehicles (sum insured ≤ RM 30,000 and engine ≤ 1,500 CC).
+                </div>
+              )}
+
               {/* Total Premium */}
               <div className="text-center py-10 bg-gradient-to-b from-muted/20 to-muted/40 rounded-2xl border border-border/30 shadow-sm">
                 <p className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-[0.2em] mb-2">Annual Premium</p>
@@ -632,6 +805,16 @@ function ResultsPage() {
                   {addonsTotal > 0 && <div className="flex justify-between text-sm"><span className="text-muted-foreground">Selected Add-ons</span><span>+ RM {addonsTotal.toFixed(2)}</span></div>}
                   <div className="pt-3 border-t border-border/40 flex justify-between items-center"><span className="font-bold text-sm">Total</span><span className="font-bold text-lg text-primary">RM {totalWithAddons.toFixed(2)}</span></div>
                   <p className="text-[11px] text-muted-foreground italic mt-2">* Excess of RM {quotation.premium.excessAmount.toFixed(0)} is applicable</p>
+                  {quotation.premium.commissionPercentage > 0 && (
+                    <div className="pt-3 mt-3 border-t border-dashed border-border/40 space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Commission disclosure</p>
+                      <div className="flex justify-between text-xs"><span className="text-muted-foreground">Commission rate</span><span>{quotation.premium.commissionPercentage}%</span></div>
+                      <div className="flex justify-between text-xs"><span className="text-muted-foreground">Commission amount</span><span>RM {quotation.premium.commissionAmount.toFixed(2)}</span></div>
+                      <p className="text-[11px] text-muted-foreground italic">
+                        * {quotation.premium.commissionPercentage}% commission (RM {quotation.premium.commissionAmount.toFixed(2)}) is payable to {AGENT_DISPLAY_NAME}.
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -693,7 +876,7 @@ function ResultsPage() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between"><h3 className="font-semibold text-sm">Enhance your coverage</h3><span className="text-xs text-muted-foreground">Optional add-ons</span></div>
                   {upfrontCovers.sort((a, b) => a.sequence - b.sequence).map((cover) => (
-                    <AddonCoverCard key={cover.coverCode} cover={cover} isSelected={selectedAddons.has(cover.coverCode)} isUpdating={isUpdatingQuote} onToggle={() => handleToggleAddon(cover)} addonInputs={addonInputs} onInputChange={handleAddonInputChange} ehailingDriver={ehailingDriver} onEhailingChange={setEhailingDriver} />
+                    <AddonCoverCard key={cover.coverCode} cover={cover} isSelected={selectedAddons.has(cover.coverCode)} isUpdating={isUpdatingQuote || pendingAddonSync} onToggle={() => handleToggleAddon(cover)} addonInputs={addonInputs} onInputChange={handleAddonInputChange} ehailingDriver={ehailingDriver} onEhailingChange={setEhailingDriver} />
                   ))}
                 </div>
               )}
@@ -705,7 +888,7 @@ function ResultsPage() {
                     {showMoreCoverages ? <><ChevronUp className="w-4 h-4" /> Hide additional coverages</> : <><ChevronDown className="w-4 h-4" /> Display more coverages ({moreCovers.length})</>}
                   </button>
                   {showMoreCoverages && moreCovers.sort((a, b) => a.sequence - b.sequence).map((cover) => (
-                    <AddonCoverCard key={cover.coverCode} cover={cover} isSelected={selectedAddons.has(cover.coverCode)} isUpdating={isUpdatingQuote} onToggle={() => handleToggleAddon(cover)} addonInputs={addonInputs} onInputChange={handleAddonInputChange} ehailingDriver={ehailingDriver} onEhailingChange={setEhailingDriver} />
+                    <AddonCoverCard key={cover.coverCode} cover={cover} isSelected={selectedAddons.has(cover.coverCode)} isUpdating={isUpdatingQuote || pendingAddonSync} onToggle={() => handleToggleAddon(cover)} addonInputs={addonInputs} onInputChange={handleAddonInputChange} ehailingDriver={ehailingDriver} onEhailingChange={setEhailingDriver} />
                   ))}
                 </div>
               )}
@@ -777,7 +960,7 @@ function AddonCoverCard({ cover, isSelected, isUpdating, onToggle, addonInputs, 
           {isSelected && cover.coverCode === '89' && (
             <div className="mt-2" onClick={(e) => e.stopPropagation()}>
               <label className="text-xs text-muted-foreground">Windscreen Sum Insured (RM)</label>
-              <input type="number" min={300} max={5000} step={100} value={inputs?.sumInsured || cover.coverSumInsured || 500} onChange={(e) => onInputChange(cover.coverCode, 'sumInsured', e.target.value)} className="mt-1 w-32 rounded-lg border border-input px-2 py-1 text-xs" />
+              <input type="number" min={WINDSCREEN_MIN_SI} max={WINDSCREEN_MAX_SI} step={100} value={inputs?.sumInsured ?? cover.coverSumInsured ?? WINDSCREEN_MIN_SI} onChange={(e) => onInputChange(cover.coverCode, 'sumInsured', e.target.value)} className="mt-1 w-32 rounded-lg border border-input px-2 py-1 text-xs" />
             </div>
           )}
 
@@ -785,7 +968,7 @@ function AddonCoverCard({ cover, isSelected, isUpdating, onToggle, addonInputs, 
           {isSelected && cover.coverCode === '97A' && (
             <div className="mt-2" onClick={(e) => e.stopPropagation()}>
               <label className="text-xs text-muted-foreground">Gas Kit Sum Insured (RM)</label>
-              <input type="number" min={100} max={10000} step={100} value={inputs?.sumInsured || cover.coverSumInsured || 1000} onChange={(e) => onInputChange(cover.coverCode, 'sumInsured', e.target.value)} className="mt-1 w-32 rounded-lg border border-input px-2 py-1 text-xs" />
+              <input type="number" min={100} max={GAS_KIT_MAX_SI} step={100} maxLength={5} value={inputs?.sumInsured ?? cover.coverSumInsured ?? 1000} onChange={(e) => onInputChange(cover.coverCode, 'sumInsured', e.target.value)} className="mt-1 w-32 rounded-lg border border-input px-2 py-1 text-xs" />
             </div>
           )}
 
@@ -831,12 +1014,18 @@ function AddonCoverCard({ cover, isSelected, isUpdating, onToggle, addonInputs, 
             </div>
           )}
         </div>
-        <span className={`font-semibold text-sm flex-shrink-0 ${cover.displayPremium === 0 && cover.selectedIndicator ? 'text-green-600' : cover.displayPremium === 0 ? 'text-muted-foreground' : ''}`}>
-          {cover.displayPremium === 0 && cover.selectedIndicator
-            ? 'FREE'
-            : cover.displayPremium === 0
-              ? '—'
-              : `+ RM ${cover.displayPremium.toFixed(2)}`}
+        <span className={`font-semibold text-sm flex-shrink-0 ${cover.displayPremium === 0 && isSelected && !isUpdating ? 'text-green-600' : ''}`}>
+          {isUpdating && isSelected
+            ? 'Calculating…'
+            : !isSelected
+              ? cover.displayPremium > 0
+                ? `+ RM ${cover.displayPremium.toFixed(2)}`
+                : '—'
+              : cover.displayPremium > 0
+                ? `+ RM ${cover.displayPremium.toFixed(2)}`
+                : cover.displayPremium === 0 && cover.selectedIndicator
+                  ? 'FREE'
+                  : '—'}
         </span>
       </div>
     </button>

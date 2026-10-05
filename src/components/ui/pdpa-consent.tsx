@@ -57,6 +57,8 @@ export function PDPAConsent({
             {consentText}{' '}
             <Link
               href="/pdpa-policy"
+              target="_blank"
+              rel="noopener noreferrer"
               className="text-primary hover:underline font-semibold"
               onClick={(e) => e.stopPropagation()}
             >

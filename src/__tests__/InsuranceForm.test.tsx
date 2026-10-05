@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import InsuranceForm from '@/components/InsuranceForm'
 
@@ -22,17 +22,20 @@ describe('InsuranceForm', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     ;(window.sessionStorage.setItem as jest.Mock).mockClear()
+    ;(window.sessionStorage.getItem as jest.Mock).mockReturnValue(null)
   })
 
   it('renders the form with all required fields', () => {
     render(<InsuranceForm />)
 
-    expect(screen.getByText('Get Your Insurance Quote')).toBeInTheDocument()
+    expect(screen.getByText(/Get your insurance quote/i)).toBeInTheDocument()
     expect(screen.getByText('Vehicle Type')).toBeInTheDocument()
-    expect(screen.getByText(/NRIC \/ ID Number/)).toBeInTheDocument()
+    expect(screen.getByText('NRIC Number')).toBeInTheDocument()
     expect(screen.getByText('Vehicle Plate Number')).toBeInTheDocument()
     expect(screen.getByText('Postcode')).toBeInTheDocument()
     expect(screen.getByText('Customer Type')).toBeInTheDocument()
+    expect(screen.getByText('Gender')).toBeInTheDocument()
+    expect(screen.getByText('Marital Status')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /get insurance quotes/i })).toBeInTheDocument()
   })
 
@@ -54,7 +57,7 @@ describe('InsuranceForm', () => {
     render(<InsuranceForm />)
 
     expect(screen.getByText('Individual')).toBeInTheDocument()
-    expect(screen.getByText('Company')).toBeInTheDocument()
+    expect(screen.getByText('Corporate insurance')).toBeInTheDocument()
   })
 
   it('formats NRIC input with dashes', async () => {
@@ -103,10 +106,9 @@ describe('InsuranceForm', () => {
     expect(screen.getByText(/Your Data is Protected/i)).toBeInTheDocument()
   })
 
-  it('shows e-hailing and electric vehicle checkboxes', () => {
+  it('shows back to home link', () => {
     render(<InsuranceForm />)
 
-    expect(screen.getByText(/e-hailing/i)).toBeInTheDocument()
-    expect(screen.getByText(/electric vehicle/i)).toBeInTheDocument()
+    expect(screen.getByText(/Back to home/i)).toBeInTheDocument()
   })
 })

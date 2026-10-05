@@ -57,10 +57,26 @@ A modern, responsive car insurance renewal frontend application built with Next.
 4. **Open your browser**
    Navigate to [http://localhost:3000](http://localhost:3000)
 
+### Hostinger (Node.js app) deploy settings
+
+Use these in **hPanel → Node.js → your app → Build settings**. Do **not** use `build:hostinger-zip` on the server (that only creates another zip locally).
+
+| Setting | Value |
+|--------|--------|
+| Node.js | **22.x** |
+| Install | `npm install` (must include dev/build deps, or keep TypeScript in `dependencies` as in this repo) |
+| **Build command** | `npm run build` |
+| **Start command** | `npm start` |
+| Output directory | `.next` |
+| Entry file | *(leave empty for Next.js)* |
+
+Set environment variables from `.env.example` in the Hostinger UI (not in the zip). Re-upload `deploy/pj-insrnce-hostinger.zip` after code changes, then redeploy.
+
 ### Available Scripts
 
 - `npm run dev` - Start development server with Turbopack
-- `npm run build` - Build for production
+- `npm run build` - Build for production (use this on Hostinger)
+- `npm run build:hostinger-zip` - **Local only**: create upload zip for Hostinger
 - `npm run start` - Start production server
 - `npm run lint` - Run Biome linter
 - `npm run format` - Format code with Biome

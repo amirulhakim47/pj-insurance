@@ -16,11 +16,17 @@ export async function generateSenangPayHash(
   detail: string,
   amount: string,
   orderId: string,
+  contractNumber: string,
 ): Promise<{ hash: string; merchantId: string }> {
   const res = await fetch(`${BASE_URL}/api/payment/hash`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ detail, amount, order_id: orderId }),
+    body: JSON.stringify({
+      detail,
+      amount,
+      order_id: orderId,
+      contract_number: contractNumber,
+    }),
   });
 
   if (!res.ok) {
@@ -33,21 +39,33 @@ export async function generateSenangPayHash(
   return { hash: data.hash, merchantId: data.merchant_id };
 }
 
+export type SenangPayVerifyResult = {
+  valid: boolean;
+  policyAccessToken?: string | null;
+  contractNumber?: string | null;
+};
+
 export async function verifySenangPayHash(
   status_id: string,
   order_id: string,
   transaction_id: string,
   msg: string,
   receivedHash: string,
-): Promise<boolean> {
+): Promise<SenangPayVerifyResult> {
   const res = await fetch(`${BASE_URL}/api/payment/verify`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ status_id, order_id, transaction_id, msg, hash: receivedHash }),
   });
 
-  if (!res.ok) return false;
+  if (!res.ok) {
+    return { valid: false };
+  }
 
   const data = await res.json();
-  return data.valid === true;
+  return {
+    valid: data.valid === true,
+    policyAccessToken: data.policyAccessToken ?? null,
+    contractNumber: data.contractNumber ?? null,
+  };
 }

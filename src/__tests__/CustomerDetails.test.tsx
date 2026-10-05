@@ -29,6 +29,9 @@ const mockFormData = {
   phoneNumber: '0121234567',
   email: 'ahmad@example.com',
   customerType: 'individual',
+  gender: 'F',
+  nationality: 'MALAYSIA',
+  maritalStatus: '0',
   isEhailing: false,
   isElectricVehicle: false,
   pdpaConsent: true,
@@ -73,9 +76,9 @@ describe('CustomerDetailsPage', () => {
 
   it('renders the page with all form sections', async () => {
     await act(async () => { render(<CustomerDetailsPage />); });
-    expect(screen.getByText('Policyholder Details')).toBeInTheDocument();
-    expect(screen.getByText('Personal Information')).toBeInTheDocument();
-    expect(screen.getByText('Contact Information')).toBeInTheDocument();
+    expect(screen.getByText('Policyholder details')).toBeInTheDocument();
+    expect(screen.getByText('Personal information')).toBeInTheDocument();
+    expect(screen.getByText('Contact information')).toBeInTheDocument();
     expect(screen.getByText('Address')).toBeInTheDocument();
   });
 
