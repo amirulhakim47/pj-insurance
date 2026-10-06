@@ -2,7 +2,8 @@
 export const ALLIANZ_DOCUMENTS = {
   pds: 'https://az.my/partner-CMCC-privatecar-PDS_ENG',
   privacyNotice: 'https://az.my/PrivacyNotice-AGIC',
-  policyWording: 'https://az.my/partner-privatecar-PW_ENG',
+  policyWording:
+    'https://www.allianz.com.my/content/dam/onemarketing/azmb/wwwallianzcommy/product-document/PrivateCar-PW_ENG.pdf',
   pidmTipsBrochure:
     'https://www.pidm.gov.my/pidm2022/files/92/92bdfcde-3534-4a29-9031-5186387623ee.pdf',
 } as const;

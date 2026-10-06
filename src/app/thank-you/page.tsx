@@ -6,11 +6,9 @@ import { AllianzLogo } from '@/components/ui/allianz-logo';
 import { PageLayout, CenteredLayout } from '@/components/ui/layout';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Download, Home, Info, ExternalLink, Shield, Loader2, FileText, AlertTriangle } from 'lucide-react';
+import { CheckCircle, Download, Home, Info, Loader2, FileText, AlertTriangle } from 'lucide-react';
 import type { QuotationResponse, VehicleDetailsResponse } from '@/types/allianz';
 import type { InsuranceFormData } from '@/types';
-import { ALLIANZ_DOCUMENTS } from '@/config/allianz-documents';
-
 type PolicyStatus =
   | { ready: false }
   | {
@@ -122,9 +120,9 @@ export default function ThankYouPage() {
             Payment successful
           </h1>
           <p className="text-[15px] text-muted-foreground leading-relaxed max-w-md mx-auto">
-            Your motor insurance is being processed. Allianz will email your e-Policy and payment acknowledgement to{' '}
-            <span className="font-medium text-foreground">{formData?.email || 'your registered email'}</span>{' '}
-            within 24 hours.
+            Your motor insurance is being processed. As soon as your policy is issued, Allianz will email your e-Policy
+            and payment acknowledgement to{' '}
+            <span className="font-medium text-foreground">{formData?.email || 'your registered email'}</span>.
           </p>
           <p className="text-xs text-muted-foreground/70 mt-3">
             Your e-Policy PDF is encrypted with the last 6 digits of your NRIC/Old IC/Passport No. as the password.
@@ -216,51 +214,15 @@ export default function ThankYouPage() {
                   <div>
                     <h4 className="text-sm font-semibold text-amber-900">Policy is being processed</h4>
                     <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">
-                      Your e-Policy will be ready within 24 hours. Allianz will email it to you directly.
+                      We&apos;re checking for your policy document. It will be sent to you via email once it&apos;s ready.
                       {polling
                         ? ' We\u2019re checking for updates automatically.'
-                        : ' You can close this page — we\u2019ll email you when it\u2019s ready.'}
+                        : ' You can close this page.'}
                     </p>
                   </div>
                 </div>
               </div>
             )}
-
-            {/* ── Free Look Period ── */}
-            <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
-              <div className="flex items-start gap-3">
-                <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="text-sm font-semibold text-blue-900">Free look period</h4>
-                  <p className="text-xs text-blue-800 mt-0.5 leading-relaxed">
-                    You may cancel within 15 days for a full premium refund, provided no claim has been made.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* ── Refund Policy ── */}
-            <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-4">
-              <div className="flex items-start gap-3">
-                <Shield className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="text-sm font-semibold text-amber-900">Refund policy</h4>
-                  <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">
-                    Refunds upon cancellation are pro-rata if insured continuously for more than 12 months, or at short
-                    period rates otherwise. See the{' '}
-                    <a
-                      href={ALLIANZ_DOCUMENTS.policyWording}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-amber-700 underline hover:text-amber-900 inline-flex items-center gap-0.5"
-                    >
-                      Policy Wording <ExternalLink className="w-2.5 h-2.5" />
-                    </a>
-                    .
-                  </p>
-                </div>
-              </div>
-            </div>
 
             {/* ── Download Buttons ── */}
             {pdfDownloadUrl && (
@@ -281,7 +243,7 @@ export default function ThankYouPage() {
             <p className="text-xs text-muted-foreground text-center leading-relaxed">
               {pdfDownloadUrl
                 ? 'Allianz has also emailed a copy of your e-Policy to your registered email.'
-                : 'Your e-Policy (PDF) will be emailed to you by Allianz within 24 hours.'}{' '}
+                : 'Your e-Policy will be emailed to you by Allianz as soon as your policy is issued.'}{' '}
               For any inquiries, call{' '}
               <span className="font-medium">1-300-22-5542</span> or email{' '}
               <a href="mailto:customer.service@allianz.com.my" className="text-primary hover:underline">

@@ -18,6 +18,10 @@ jest.mock('next/navigation', () => ({
   usePathname: () => '/payment',
 }));
 
+jest.mock('@/config/payment-provider', () => ({
+  isStripePayment: () => false,
+}));
+
 jest.mock('@/lib/senangpay', () => ({
   SENANGPAY_CONFIG: {},
   generateSenangPayHash: jest.fn().mockResolvedValue({ hash: 'test-hash', merchantId: 'test-merchant' }),

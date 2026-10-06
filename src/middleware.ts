@@ -58,6 +58,7 @@ export function middleware(req: NextRequest) {
     pathname.startsWith('/api/quote') ||
     pathname.startsWith('/api/submission') ||
     pathname.startsWith('/api/payment/') ||
+    pathname.startsWith('/api/stripe/') ||
     pathname.startsWith('/api/check-ubb');
 
   const limit = sensitive ? MAX_SENSITIVE_REQUESTS : MAX_API_REQUESTS;

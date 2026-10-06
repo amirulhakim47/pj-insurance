@@ -10,7 +10,9 @@ import type { InsuranceFormData } from '@/types';
 import type { QuotationResponse, VehicleDetailsResponse } from '@/types/allianz';
 import { ShieldCheck, ArrowLeft, Lock, AlertCircle, FileText, ExternalLink, Car, User } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { isStripePayment } from '@/config/payment-provider';
 import { SENANGPAY_CONFIG, generateSenangPayHash } from '@/lib/senangpay';
+import { createStripeCheckoutSession } from '@/lib/stripe-checkout';
 import { ALLIANZ_DOCUMENTS, AGENT_DISPLAY_NAME } from '@/config/allianz-documents';
 import { formatCoverageDate } from '@/lib/date-format';
 
@@ -84,12 +86,30 @@ export default function PaymentPage() {
     try {
       const orderId = `ORDER-${quotation.contract.contractNumber}-${Date.now()}`;
       const formattedAmount = grandTotal.toFixed(2);
+      const isDemo = sessionStorage.getItem('allianz_isDemo') === 'true';
+      const name = customerDetails?.fullName || formData.fullName;
+      const email = customerDetails?.email || formData.email;
+
+      if (isStripePayment()) {
+        const { url } = await createStripeCheckoutSession({
+          contractNumber: quotation.contract.contractNumber,
+          amount: formattedAmount,
+          orderId,
+          customerEmail: email,
+          customerName: name,
+          demo: isDemo,
+        });
+        window.location.href = url;
+        return;
+      }
+
       const detail = `Motor_Insurance_${quotation.contract.contractNumber}`;
       const { hash, merchantId } = await generateSenangPayHash(
         detail,
         formattedAmount,
         orderId,
         quotation.contract.contractNumber,
+        { demo: isDemo, premiumDueRounded: grandTotal },
       );
 
       const paymentUrl = `https://sandbox.senangpay.my/payment/${merchantId}`;
@@ -97,8 +117,6 @@ export default function PaymentPage() {
       form.method = 'POST';
       form.action = paymentUrl;
 
-      const name = customerDetails?.fullName || formData.fullName;
-      const email = customerDetails?.email || formData.email;
       const phone = customerDetails ? `${customerDetails.mobilePrefix}${customerDetails.mobileNumber}` : formData.phoneNumber;
 
       const fields: Record<string, string> = { detail, amount: formattedAmount, order_id: orderId, hash, name, email, phone };
@@ -111,13 +129,16 @@ export default function PaymentPage() {
       form.submit();
     } catch (err) {
       console.error('Payment error:', err);
-      setError('Failed to process payment request. Please try again.');
+      const message = err instanceof Error ? err.message : 'Failed to process payment request. Please try again.';
+      setError(message);
       setIsProcessing(false);
     }
   };
 
   if (!quotation || !formData) return null;
   const premium = quotation.premium;
+  const useStripe = isStripePayment();
+  const paymentProcessorLabel = useStripe ? 'Stripe (test mode)' : 'SenangPay';
 
   return (
     <PageLayout>
@@ -163,7 +184,9 @@ export default function PaymentPage() {
             <Card className="border-border/40 shadow-sm">
               <CardHeader>
                 <CardTitle className="font-serif text-lg">Secure payment</CardTitle>
-                <CardDescription>You&apos;ll be redirected to SenangPay to complete your purchase.</CardDescription>
+                <CardDescription>
+                  You&apos;ll be redirected to {paymentProcessorLabel} to complete your purchase.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-5">
                 {error && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
@@ -171,7 +194,7 @@ export default function PaymentPage() {
                 <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
                   <div className="flex items-start gap-3">
                     <ShieldCheck className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                    <div><h4 className="text-sm font-semibold text-blue-900">Encrypted and secure</h4><p className="text-xs text-blue-700 mt-0.5 leading-relaxed">Your payment is processed securely by SenangPay. We never store card details.</p></div>
+                    <div><h4 className="text-sm font-semibold text-blue-900">Encrypted and secure</h4><p className="text-xs text-blue-700 mt-0.5 leading-relaxed">Your payment is processed securely by {paymentProcessorLabel}. We never store card details on our servers.</p></div>
                   </div>
                 </div>
 

@@ -17,7 +17,13 @@ export async function generateSenangPayHash(
   amount: string,
   orderId: string,
   contractNumber: string,
+  options: { demo?: boolean; premiumDueRounded?: number } = {},
 ): Promise<{ hash: string; merchantId: string }> {
+  const { syncQuotePremiumForPayment } = await import('@/lib/quote-premium-sync');
+  const premium =
+    options.premiumDueRounded ?? Number.parseFloat(amount);
+  await syncQuotePremiumForPayment(contractNumber, premium, { demo: options.demo });
+
   const res = await fetch(`${BASE_URL}/api/payment/hash`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

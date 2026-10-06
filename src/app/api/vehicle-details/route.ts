@@ -1,8 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getVehicleDetails } from '@/lib/server/allianz-api';
+import { getVehicleDetails, getAllianzApiHost } from '@/lib/server/allianz-api';
+import { AllianzApiError, maskPlate, toClientErrorPayload } from '@/lib/server/allianz-errors';
+import { logAllianz } from '@/lib/server/allianz-log';
+import { isConfigured } from '@/lib/server/allianz-auth';
 
 export async function POST(req: NextRequest) {
+  const started = Date.now();
+  let normalizedPlate: string | undefined;
+
   try {
+    if (!isConfigured()) {
+      logAllianz('error', 'vehicle_details_config', {
+        reason: 'missing_allianz_credentials',
+      });
+      return NextResponse.json(
+        {
+          status: 503,
+          code: 'CONFIG_ERROR',
+          message: 'Allianz API is not configured on the server. Please contact support.',
+        },
+        { status: 503 },
+      );
+    }
+
     const { plateNumber, identityNumber, identityType = 'NRIC', postalCode } = await req.json();
 
     if (!plateNumber || !identityNumber) {
@@ -26,21 +46,71 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const partnerId = process.env.ALLIANZ_PARTNER_ID ?? '';
+    const partnerId = process.env.ALLIANZ_PARTNER_ID?.trim() ?? '';
+    if (!partnerId) {
+      logAllianz('error', 'vehicle_details_config', {
+        reason: 'missing_ALLIANZ_PARTNER_ID',
+        apiHost: getAllianzApiHost(),
+      });
+      return NextResponse.json(
+        {
+          status: 503,
+          code: 'CONFIG_ERROR',
+          message: 'Partner configuration is missing on the server. Please contact support.',
+        },
+        { status: 503 },
+      );
+    }
+
+    normalizedPlate = plateNumber.toUpperCase().replace(/\s/g, '');
+    logAllianz('info', 'vehicle_details_lookup', {
+      plate: maskPlate(normalizedPlate),
+      identityType,
+      hasPostalCode: Boolean(postalCode),
+      apiHost: getAllianzApiHost(),
+      partnerId,
+    });
+
     const result = await getVehicleDetails({
       sourceSystem: partnerId,
-      vehicleLicenseId: plateNumber.toUpperCase().replace(/\s/g, ''),
+      vehicleLicenseId: normalizedPlate,
       identityType,
       identityNumber: identityNumber.replace(/-/g, ''),
       checkUbbInd: 1,
       ...(postalCode ? { postalCode } : {}),
     });
 
+    logAllianz('info', 'vehicle_details_success', {
+      plate: maskPlate(normalizedPlate),
+      durationMs: Date.now() - started,
+      contractNumber:
+        result && typeof result === 'object' && 'contractNumber' in result
+          ? (result as { contractNumber?: string }).contractNumber
+          : undefined,
+    });
+
     return NextResponse.json(result);
-  } catch (err: any) {
-    console.error('[vehicle-details] Error:', err.message);
-    const status = err.status || err.response?.status || 500;
-    const data = err.response?.data || { message: err.message };
-    return NextResponse.json(data, { status });
+  } catch (err: unknown) {
+    if (err instanceof AllianzApiError) {
+      logAllianz('error', 'vehicle_details_failed', {
+        code: err.code,
+        requestId: err.requestId,
+        allianzErrors: err.allianzErrors,
+        durationMs: Date.now() - started,
+        apiHost: getAllianzApiHost(),
+      });
+      const payload = toClientErrorPayload(err, normalizedPlate);
+      return NextResponse.json(payload, {
+        status: err.status,
+        headers: { 'X-Request-ID': err.requestId },
+      });
+    }
+
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    logAllianz('error', 'vehicle_details_unexpected', { message });
+    return NextResponse.json(
+      { status: 500, code: 'INTERNAL_ERROR', message: 'Failed to fetch vehicle details. Please try again.' },
+      { status: 500 },
+    );
   }
 }

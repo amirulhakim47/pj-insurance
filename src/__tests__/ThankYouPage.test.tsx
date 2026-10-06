@@ -1,7 +1,5 @@
 import { render, screen, act } from '@testing-library/react';
 import ThankYouPage from '@/app/thank-you/page';
-import { ALLIANZ_DOCUMENTS } from '@/config/allianz-documents';
-
 const mockPush = jest.fn();
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush, back: jest.fn(), replace: jest.fn(), prefetch: jest.fn(), forward: jest.fn(), refresh: jest.fn() }),
@@ -70,15 +68,10 @@ describe('ThankYouPage', () => {
     expect(screen.getByText('RM 1086.50')).toBeInTheDocument();
   });
 
-  it('displays refund policy disclosure', async () => {
+  it('shows policy processing message while waiting for callback', async () => {
     await act(async () => { render(<ThankYouPage />); });
-    expect(screen.getByText('Refund policy')).toBeInTheDocument();
-  });
-
-  it('has link to policy wording in refund section', async () => {
-    await act(async () => { render(<ThankYouPage />); });
-    const link = screen.getByRole('link', { name: /Policy Wording/i });
-    expect(link).toHaveAttribute('href', ALLIANZ_DOCUMENTS.policyWording);
+    expect(screen.getByText(/checking for your policy document/i)).toBeInTheDocument();
+    expect(screen.getByText(/sent to you via email once it/i)).toBeInTheDocument();
   });
 
   it('has a Return to Home button', async () => {

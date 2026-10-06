@@ -7,7 +7,12 @@ import { AllianzLogo } from '@/components/ui/allianz-logo';
 import { PageLayout, Container, StepIndicator } from '@/components/ui/layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, CreditCard, Check, Shield, Car, Info, FileText, ExternalLink, ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
+import { ArrowLeft, CreditCard, Check, Shield, Car, Info, FileText, ExternalLink, HelpCircle } from 'lucide-react';
+import {
+  AdditionalCoveragesSection,
+  RoadRangersTooltipButton,
+} from '@/components/AdditionalCoveragesSection';
+import { isCoverHidden } from '@/config/addon-tooltips';
 import { generateQuote, getLOV, checkUBB, updateQuote } from '@/lib/allianz-api';
 import { formatCoveragePeriod } from '@/lib/date-format';
 import {
@@ -17,12 +22,11 @@ import {
   defaultAddonInputsForCover,
   groupAvVariantsBySumInsured,
   avTierLabel,
-  WINDSCREEN_MIN_SI,
-  WINDSCREEN_MAX_SI,
-  GAS_KIT_MAX_SI,
   type AddonInputState,
 } from '@/lib/addon-quote';
 import { applyDemoQuoteUpdate } from '@/lib/demo-quote';
+import { validateQuotationStepBeforeProceed } from '@/lib/quote-step-validation';
+import { syncQuotePremiumForPayment } from '@/lib/quote-premium-sync';
 import {
   ALLIANZ_DOCUMENTS,
   AGENT_DISPLAY_NAME,
@@ -43,36 +47,6 @@ import type {
 } from '@/types/allianz';
 
 const STEPS = ['Vehicle Details', 'Quotation', 'Customer Info', 'Review & Pay'];
-
-const ADDON_TOOLTIPS: Record<string, { text: string; link?: string }> = {
-  'ROAD_RANGERS': {
-    text: 'Allianz Road Rangers is a nationwide motor accident assistance provided free-of-charge to all our Motor Comprehensive (Private Car) policyholders.',
-    link: 'https://www.allianz.com.my/road-rangers',
-  },
-  'PAB-ERW': {
-    text: 'Enhanced Road Warrior (ERW) is a 24-Hour Car Assistance Program with the following benefits: 24-Hour Unlimited Emergency Tow Truck Service, Car Replacement, Minor Roadside Repair, Flood Coverage, Medical Expenses Benefit.',
-    link: 'https://www.allianz.com.my/enhanced-road-warrior',
-  },
-  '89': { text: 'Cover for Windscreens, Windows and Sunroof covers the cost to repair or replace any glass in the windscreen, window or sunroof (including the cost of lamination/tinting film, if any) of your car that is accidentally damaged. A claim under this benefit does not affect your No Claim Discount (NCD) entitlement, provided no other claim for other damage is submitted for the same incident.' },
-  'A202': { text: 'Private Hire Car (e-Hailing) add on covers you for: 1. Loss or damage of your own car, 2. Liability to third parties, 3. Legal liability to fare paying passengers, 4. Personal accident benefit due to accidental injury or death of the authorized e-Hailing driver, 5. Legal liability of fare paying passengers for negligent acts.' },
-  '72': { text: 'Legal Liability of Passengers for Negligent Acts protects you against legal liability sought by third party against you for the action of your passenger(s) in your car provided that the passenger is not driving your car and other conditions set are satisfied.' },
-  'A209': { text: 'Car Break-in/Robbery reimburses you the actual expenses incurred up to RM500, to repair or replace your personal effects that were in your car if they are lost or damaged due to a break-in or robbery.' },
-  '57': { text: 'Inclusion of Special Perils covers loss or damage to your car caused by flood, typhoon, hurricane, storm, tempest, volcanic eruption, earthquake, landslide, landslip, subsidence or sinking of the soil/earth or other convulsions of nature.' },
-  'PAB3': { text: 'Driver and Passengers\' Personal Accident covers you and your passengers while travelling in your car. Benefits include Death/Permanent Disablement Benefit.' },
-  'A206': { text: 'Key Care reimburses you the actual expenses up to RM1,000, to replace one set of car key if your car key is lost, stolen or damaged due to theft or attempted theft or house break-in.' },
-  '100A': { text: 'Legal Liability to Passengers covers you against legal liability sought by your passenger(s) (except your own family members) against you in the event of an accident due to your negligence.' },
-  '112': { text: 'Compensation for Assessed Repair Time (CART) compensates you, up to 21 days, for the number of days required (assessed by us) to repair your damaged car.' },
-  '25': { text: 'Strike, Riot and Civil Commotion covers for loss or damage to your car caused by various kinds of strikes, riots and civil commotions.' },
-  '111': { text: 'Current Year "NCD" Relief compensates you an amount equal to the current year NCD amount in the event of a claim being made under the policy that may forfeit your NCD. This is a one-off compensation.' },
-  '97A': { text: 'Gas Conversion Kit and Tank covers for loss or damage to the Gas Conversion Kit and Tank of your car as a separate item provided it is installed by a qualified installer.' },
-};
-
-const UPFRONT_COVER_CODES = new Set(['PAB-ERW', '89', 'A202', '72']);
-const UPFRONT_MAX_SEQUENCE = 6;
-
-function isCoverHidden(c: AdditionalCoverItem): boolean {
-  return c.azolHiddenInd === 1;
-}
 
 function resolvePersonGender(formData: InsuranceFormData): Gender {
   if (formData.customerType === 'company') return 'C';
@@ -151,38 +125,6 @@ function extractGenderFromNRIC(nric: string): Gender {
   return lastDigit % 2 === 0 ? 'F' : 'M';
 }
 
-function TooltipButton({ coverCode }: { coverCode: string }) {
-  const [open, setOpen] = React.useState(false);
-  const tooltip = ADDON_TOOLTIPS[coverCode];
-  if (!tooltip) return null;
-
-  return (
-    <span className="relative inline-block">
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
-        className="text-muted-foreground hover:text-primary transition-colors"
-        aria-label="More info"
-      >
-        <HelpCircle className="w-3.5 h-3.5" />
-      </button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 bg-popover border border-border rounded-xl shadow-lg p-3 text-xs text-popover-foreground leading-relaxed">
-            {tooltip.text}
-            {tooltip.link && (
-              <a href={tooltip.link} target="_blank" rel="noopener noreferrer" className="block mt-1.5 text-primary hover:underline font-medium">
-                Click here to find out more <ExternalLink className="w-2.5 h-2.5 inline" />
-              </a>
-            )}
-          </div>
-        </>
-      )}
-    </span>
-  );
-}
-
 export default function ResultsPageWrapper() {
   return (
     <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>}>
@@ -215,11 +157,10 @@ function ResultsPage() {
   const [avAvailable, setAvAvailable] = React.useState(true);
   const [showRecondTooltip, setShowRecondTooltip] = React.useState(false);
 
-  const [showMoreCoverages, setShowMoreCoverages] = React.useState(false);
-
   const [driverPlan, setDriverPlan] = React.useState<'0' | '1' | '2' | 'unlimited'>('0');
   const [additionalDrivers, setAdditionalDrivers] = React.useState<AdditionalDriverInfo[]>([]);
   const [ehailingDriver, setEhailingDriver] = React.useState<{ fullName: string; idNumber: string }>({ fullName: '', idNumber: '' });
+  const [ehailingErrors, setEhailingErrors] = React.useState<{ fullName?: string; idNumber?: string }>({});
   const [rahmahApplied, setRahmahApplied] = React.useState(false);
   const [pendingAddonSync, setPendingAddonSync] = React.useState(false);
   const addonSyncTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -393,6 +334,18 @@ function ResultsPage() {
 
       setQuotation(result);
       sessionStorage.setItem('allianz_quotation', JSON.stringify(result));
+      if (isDemo) {
+        sessionStorage.setItem('allianz_isDemo', 'true');
+        try {
+          await syncQuotePremiumForPayment(
+            result.contract.contractNumber,
+            result.premium.premiumDueRounded,
+            { demo: true },
+          );
+        } catch (syncErr) {
+          console.warn('[demo] Initial quote premium sync failed:', syncErr);
+        }
+      }
 
       const preSelected = new Set<string>();
       result.additionalCover?.forEach((cover) => {
@@ -450,6 +403,15 @@ function ResultsPage() {
           );
           setQuotation(updated);
           sessionStorage.setItem('allianz_quotation', JSON.stringify(updated));
+          try {
+            await syncQuotePremiumForPayment(
+              updated.contract.contractNumber,
+              updated.premium.premiumDueRounded,
+              { demo: true },
+            );
+          } catch (syncErr) {
+            console.warn('[demo] Quote premium sync failed:', syncErr);
+          }
           return;
         }
         const additionalCover = buildAdditionalCoverPayload(
@@ -514,6 +476,7 @@ function ResultsPage() {
 
     if (cover.coverCode === 'A202' && !newSelected.has('A202')) {
       setEhailingDriver({ fullName: '', idNumber: '' });
+      setEhailingErrors({});
     }
 
     const nextInputs = adding
@@ -568,8 +531,56 @@ function ResultsPage() {
     setAdditionalDrivers((prev) => prev.map((d, i) => i === index ? { ...d, [field]: value } : d));
   };
 
+  const handleEhailingChange = (driver: { fullName: string; idNumber: string }) => {
+    setEhailingDriver(driver);
+    if (selectedAddons.has('A202')) {
+      setEhailingErrors({});
+      setError(null);
+    }
+  };
+
   const handleProceedToPayment = () => {
     if (!quotation) return;
+
+    const validation = validateQuotationStepBeforeProceed({
+      selectedAddons,
+      ehailingDriver,
+      driverPlan,
+      additionalDrivers,
+      isUpdatingQuote,
+      pendingAddonSync,
+    });
+
+    if (!validation.ok) {
+      setError(validation.message);
+      if (validation.ehailingErrors) {
+        setEhailingErrors(validation.ehailingErrors);
+      }
+      if (validation.focusTarget === 'ehailing') {
+        requestAnimationFrame(() => {
+          document.getElementById('ehailing-driver-section')?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+          });
+        });
+      } else if (validation.focusTarget === 'additionalDrivers') {
+        requestAnimationFrame(() => {
+          document.getElementById('additional-drivers-section')?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+          });
+        });
+      }
+      return;
+    }
+
+    setError(null);
+    setEhailingErrors({});
+    if (isDemo) {
+      sessionStorage.setItem('allianz_isDemo', 'true');
+    } else {
+      sessionStorage.removeItem('allianz_isDemo');
+    }
     sessionStorage.setItem('allianz_quotation', JSON.stringify(quotation));
     sessionStorage.setItem('allianz_selectedAddons', JSON.stringify([...selectedAddons]));
     sessionStorage.setItem('allianz_driverPlan', driverPlan);
@@ -582,12 +593,7 @@ function ResultsPage() {
 
   if (!formData && !isDemo) return null;
 
-  const isUpfront = (cover: AdditionalCoverItem) =>
-    cover.sequence <= UPFRONT_MAX_SEQUENCE || UPFRONT_COVER_CODES.has(cover.coverCode);
-
   const visibleCovers = quotation?.additionalCover?.filter((c) => !isCoverHidden(c)) || [];
-  const upfrontCovers = visibleCovers.filter(isUpfront);
-  const moreCovers = visibleCovers.filter((c) => !isUpfront(c));
 
   const currentSumInsured = siBasis === 'AV' && selectedAvVariant
     ? parseFloat(selectedAvVariant.SumInsured)
@@ -825,7 +831,7 @@ function ResultsPage() {
                   <div className="flex items-start gap-3">
                     <div className="flex-shrink-0 w-5 h-5 rounded bg-green-500 flex items-center justify-center mt-0.5"><Check className="w-3 h-3 text-white" /></div>
                     <div className="flex-1">
-                      <div className="flex items-center gap-1.5"><span className="font-medium text-sm">Road Rangers</span><TooltipButton coverCode="ROAD_RANGERS" /></div>
+                      <div className="flex items-center gap-1.5"><span className="font-medium text-sm">Road Rangers</span><RoadRangersTooltipButton /></div>
                       <p className="text-xs text-muted-foreground mt-0.5">Nationwide motor accident assistance — included free with your policy.</p>
                     </div>
                     <span className="font-semibold text-sm text-green-600">FREE</span>
@@ -834,7 +840,7 @@ function ResultsPage() {
               </div>
 
               {/* ═══ Additional Drivers (custom add-on) ═══ */}
-              <div className="space-y-3">
+              <div id="additional-drivers-section" className="space-y-3">
                 <h3 className="font-semibold text-sm">Additional driver coverage</h3>
                 <div className="space-y-2">
                   {([
@@ -871,26 +877,19 @@ function ResultsPage() {
                 ))}
               </div>
 
-              {/* ═══ Upfront Add-ons ═══ */}
-              {upfrontCovers.length > 0 && (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between"><h3 className="font-semibold text-sm">Enhance your coverage</h3><span className="text-xs text-muted-foreground">Optional add-ons</span></div>
-                  {upfrontCovers.sort((a, b) => a.sequence - b.sequence).map((cover) => (
-                    <AddonCoverCard key={cover.coverCode} cover={cover} isSelected={selectedAddons.has(cover.coverCode)} isUpdating={isUpdatingQuote || pendingAddonSync} onToggle={() => handleToggleAddon(cover)} addonInputs={addonInputs} onInputChange={handleAddonInputChange} ehailingDriver={ehailingDriver} onEhailingChange={setEhailingDriver} />
-                  ))}
-                </div>
-              )}
-
-              {/* ═══ Display More Coverages ═══ */}
-              {moreCovers.length > 0 && (
-                <div className="space-y-3">
-                  <button onClick={() => setShowMoreCoverages(!showMoreCoverages)} className="w-full flex items-center justify-center gap-2 text-sm text-primary font-medium hover:underline py-2">
-                    {showMoreCoverages ? <><ChevronUp className="w-4 h-4" /> Hide additional coverages</> : <><ChevronDown className="w-4 h-4" /> Display more coverages ({moreCovers.length})</>}
-                  </button>
-                  {showMoreCoverages && moreCovers.sort((a, b) => a.sequence - b.sequence).map((cover) => (
-                    <AddonCoverCard key={cover.coverCode} cover={cover} isSelected={selectedAddons.has(cover.coverCode)} isUpdating={isUpdatingQuote || pendingAddonSync} onToggle={() => handleToggleAddon(cover)} addonInputs={addonInputs} onInputChange={handleAddonInputChange} ehailingDriver={ehailingDriver} onEhailingChange={setEhailingDriver} />
-                  ))}
-                </div>
+              {visibleCovers.length > 0 && (
+                <AdditionalCoveragesSection
+                  covers={visibleCovers}
+                  selectedAddons={selectedAddons}
+                  isUpdating={isUpdatingQuote}
+                  pendingAddonSync={pendingAddonSync}
+                  onToggleAddon={handleToggleAddon}
+                  addonInputs={addonInputs}
+                  onInputChange={handleAddonInputChange}
+                  ehailingDriver={ehailingDriver}
+                  onEhailingChange={handleEhailingChange}
+                  ehailingErrors={ehailingErrors}
+                />
               )}
 
               {/* Error */}
@@ -900,7 +899,14 @@ function ResultsPage() {
               <div className="sticky bottom-0 bg-background/95 backdrop-blur-md border-t border-border/30 -mx-5 px-5 py-4 sm:relative sm:border-0 sm:bg-transparent sm:backdrop-blur-none sm:mx-0 sm:px-0 sm:py-0 shadow-[0_-4px_12px_rgba(0,0,0,0.04)] sm:shadow-none">
                 <div className="flex flex-col sm:flex-row gap-3 justify-center items-center max-w-lg mx-auto">
                   <Button variant="outline" onClick={() => { setQuotation(null); setSelectedNvic(null); }} className="w-full sm:w-auto h-11"><ArrowLeft className="w-4 h-4 mr-2" />Change variant</Button>
-                  <Button onClick={handleProceedToPayment} disabled={!quotation} className="w-full sm:w-auto h-12 text-base font-semibold"><CreditCard className="w-4 h-4 mr-2" />Proceed &middot; RM {totalWithAddons.toFixed(2)}</Button>
+                  <Button
+                    onClick={handleProceedToPayment}
+                    disabled={!quotation || isUpdatingQuote || pendingAddonSync}
+                    className="w-full sm:w-auto h-12 text-base font-semibold"
+                  >
+                    <CreditCard className="w-4 h-4 mr-2" />
+                    Proceed &middot; RM {totalWithAddons.toFixed(2)}
+                  </Button>
                 </div>
               </div>
             </div>
@@ -916,118 +922,5 @@ function ResultsPage() {
         </div>
       </Container>
     </PageLayout>
-  );
-}
-
-/* ═══ AddonCoverCard Component ═══ */
-
-function AddonCoverCard({ cover, isSelected, isUpdating, onToggle, addonInputs, onInputChange, ehailingDriver, onEhailingChange }: {
-  cover: AdditionalCoverItem;
-  isSelected: boolean;
-  isUpdating: boolean;
-  onToggle: () => void;
-  addonInputs: Record<string, { sumInsured?: number; cartDay?: string; cartAmount?: string; planCode?: string }>;
-  onInputChange: (code: string, field: string, value: string) => void;
-  ehailingDriver: { fullName: string; idNumber: string };
-  onEhailingChange: (d: { fullName: string; idNumber: string }) => void;
-}) {
-  const inputs = addonInputs[cover.coverCode];
-
-  return (
-    <button onClick={onToggle} disabled={isUpdating} className={`w-full text-left p-4 rounded-xl border-2 transition-all duration-300 ${isSelected ? 'border-primary bg-primary/5 shadow-md shadow-primary/5' : 'border-border/40 hover:border-primary/20 hover:shadow-sm'} ${isUpdating ? 'opacity-60' : ''}`}>
-      <div className="flex items-start gap-3">
-        <div className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center mt-0.5 transition-colors ${isSelected ? 'bg-primary border-primary' : 'border-muted-foreground/30'}`}>{isSelected && <Check className="w-3 h-3 text-primary-foreground" />}</div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            <span className="font-medium text-sm">{cover.coverName}</span>
-            <TooltipButton coverCode={cover.coverCode} />
-          </div>
-          {cover.coverDescription && <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{cover.coverDescription}</p>}
-
-          {/* ERW plan dropdown */}
-          {isSelected && cover.coverCode === 'PAB-ERW' && (
-            <div className="mt-2" onClick={(e) => e.stopPropagation()}>
-              <label className="text-xs text-muted-foreground">No. of Car Replacement Days</label>
-              <select value={inputs?.planCode || 'PABERWA'} onChange={(e) => onInputChange(cover.coverCode, 'planCode', e.target.value)} className="mt-1 w-48 rounded-lg border border-input px-2 py-1 text-xs">
-                <option value="PABERWA">Plan A — 5 days</option>
-                <option value="PABERWB">Plan B — 6 days</option>
-                <option value="PABERWC">Plan C — 7 days</option>
-              </select>
-            </div>
-          )}
-
-          {/* Windscreen SI input (cover code 89) */}
-          {isSelected && cover.coverCode === '89' && (
-            <div className="mt-2" onClick={(e) => e.stopPropagation()}>
-              <label className="text-xs text-muted-foreground">Windscreen Sum Insured (RM)</label>
-              <input type="number" min={WINDSCREEN_MIN_SI} max={WINDSCREEN_MAX_SI} step={100} value={inputs?.sumInsured ?? cover.coverSumInsured ?? WINDSCREEN_MIN_SI} onChange={(e) => onInputChange(cover.coverCode, 'sumInsured', e.target.value)} className="mt-1 w-32 rounded-lg border border-input px-2 py-1 text-xs" />
-            </div>
-          )}
-
-          {/* Gas Conversion Kit SI input (cover code 97A) */}
-          {isSelected && cover.coverCode === '97A' && (
-            <div className="mt-2" onClick={(e) => e.stopPropagation()}>
-              <label className="text-xs text-muted-foreground">Gas Kit Sum Insured (RM)</label>
-              <input type="number" min={100} max={GAS_KIT_MAX_SI} step={100} maxLength={5} value={inputs?.sumInsured ?? cover.coverSumInsured ?? 1000} onChange={(e) => onInputChange(cover.coverCode, 'sumInsured', e.target.value)} className="mt-1 w-32 rounded-lg border border-input px-2 py-1 text-xs" />
-            </div>
-          )}
-
-          {/* CART LOV dropdowns (cover code 112) */}
-          {isSelected && cover.coverCode === '112' && (
-            <div className="mt-2 flex gap-3" onClick={(e) => e.stopPropagation()}>
-              <div>
-                <label className="text-xs text-muted-foreground">No. of Days</label>
-                <select value={inputs?.cartDay || '7'} onChange={(e) => onInputChange(cover.coverCode, 'cartDay', e.target.value)} className="mt-1 w-20 rounded-lg border border-input px-2 py-1 text-xs">
-                  <option value="7">7 days</option>
-                  <option value="14">14 days</option>
-                  <option value="21">21 days</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground">Amount per Day</label>
-                <select value={inputs?.cartAmount || '100'} onChange={(e) => onInputChange(cover.coverCode, 'cartAmount', e.target.value)} className="mt-1 w-24 rounded-lg border border-input px-2 py-1 text-xs">
-                  <option value="50">RM 50</option>
-                  <option value="100">RM 100</option>
-                  <option value="200">RM 200</option>
-                </select>
-              </div>
-            </div>
-          )}
-
-          {/* Driver PA plan (cover code PAB3) */}
-          {isSelected && cover.coverCode === 'PAB3' && (
-            <div className="mt-2" onClick={(e) => e.stopPropagation()}>
-              <label className="text-xs text-muted-foreground">Death/Permanent Disablement Benefit (per person)</label>
-              <select value={inputs?.planCode || 'PAB3A'} onChange={(e) => onInputChange(cover.coverCode, 'planCode', e.target.value)} className="mt-1 w-56 rounded-lg border border-input px-2 py-1 text-xs">
-                <option value="PAB3A">Plan A — RM 25,000</option>
-                <option value="PAB3B">Plan B — RM 50,000</option>
-              </select>
-            </div>
-          )}
-
-          {/* e-Hailing driver details (cover code A202) */}
-          {isSelected && cover.coverCode === 'A202' && (
-            <div className="mt-2 space-y-2" onClick={(e) => e.stopPropagation()}>
-              <p className="text-xs text-muted-foreground font-medium">e-Hailing Driver Details</p>
-              <div><label className="text-xs text-muted-foreground">Driver Name *</label><input value={ehailingDriver.fullName} onChange={(e) => onEhailingChange({ ...ehailingDriver, fullName: e.target.value.toUpperCase() })} className="mt-1 w-full rounded-lg border border-input px-2 py-1 text-xs uppercase" placeholder="DRIVER NAME" /></div>
-              <div><label className="text-xs text-muted-foreground">ID No. *</label><input value={ehailingDriver.idNumber} onChange={(e) => onEhailingChange({ ...ehailingDriver, idNumber: e.target.value })} className="mt-1 w-full rounded-lg border border-input px-2 py-1 text-xs" placeholder="ID Number" /></div>
-            </div>
-          )}
-        </div>
-        <span className={`font-semibold text-sm flex-shrink-0 ${cover.displayPremium === 0 && isSelected && !isUpdating ? 'text-green-600' : ''}`}>
-          {isUpdating && isSelected
-            ? 'Calculating…'
-            : !isSelected
-              ? cover.displayPremium > 0
-                ? `+ RM ${cover.displayPremium.toFixed(2)}`
-                : '—'
-              : cover.displayPremium > 0
-                ? `+ RM ${cover.displayPremium.toFixed(2)}`
-                : cover.displayPremium === 0 && cover.selectedIndicator
-                  ? 'FREE'
-                  : '—'}
-        </span>
-      </div>
-    </button>
   );
 }

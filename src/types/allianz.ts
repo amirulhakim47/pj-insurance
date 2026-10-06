@@ -286,6 +286,7 @@ export interface ApiErrorResponse {
   status: number;
   code: string;
   message: string;
+  requestId?: string;
   ubbReferCodes?: string[];
   policyExpiryDate?: string;
 }

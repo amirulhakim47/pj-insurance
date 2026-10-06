@@ -10,7 +10,8 @@ import { loadingMessages } from '@/data/sampleData';
 import { getVehicleDetails } from '@/lib/allianz-api';
 import type { InsuranceFormData } from '@/types';
 import type { IdentityType, ApiErrorResponse } from '@/types/allianz';
-import { formatUBBMessage } from '@/types/allianz';
+import { vehicleDataNotFoundWithGuidance } from '@/lib/vehicle-lookup-messages';
+import { formatUBBMessage, UBB_REFER_MESSAGES } from '@/types/allianz';
 import { AlertTriangle, XCircle, ArrowLeft } from 'lucide-react';
 
 const STEPS = ['Vehicle Details', 'Quotation', 'Customer Info', 'Review & Pay'];
@@ -33,6 +34,7 @@ export default function LoadingPage() {
   const [errorDetails, setErrorDetails] = React.useState<{
     ubbReferCodes?: string[];
     policyExpiryDate?: string;
+    requestId?: string;
   } | null>(null);
 
   React.useEffect(() => {
@@ -111,9 +113,21 @@ export default function LoadingPage() {
           setErrorDetails({
             ubbReferCodes: apiErr.ubbReferCodes,
             policyExpiryDate: apiErr.policyExpiryDate,
+            requestId: apiErr.requestId,
           });
         } else {
-          setError(apiErr?.message || 'Failed to fetch vehicle details. Please try again.');
+          let message =
+            apiErr?.message || 'Failed to fetch vehicle details. Please try again.';
+          const plate = formData.plateNumber?.trim();
+          if (
+            plate &&
+            (apiErr?.code === 'VEHICLE_LOOKUP_NOT_FOUND' ||
+              apiErr?.code === 'VEHICLE_ID_MISMATCH')
+          ) {
+            message = vehicleDataNotFoundWithGuidance(plate, UBB_REFER_MESSAGES.ID_MISMATCH);
+          }
+          setError(message);
+          setErrorDetails(apiErr?.requestId ? { requestId: apiErr.requestId } : null);
         }
 
         setProgress(100);
@@ -169,6 +183,11 @@ export default function LoadingPage() {
                   </p>
                 ))}
               </div>
+            )}
+            {errorDetails?.requestId && (
+              <p className="text-xs text-muted-foreground">
+                Reference: <span className="font-mono">{errorDetails.requestId}</span>
+              </p>
             )}
             <Button onClick={() => router.push('/')} className="h-11 rounded-full px-6">
               <ArrowLeft className="w-4 h-4 mr-2" />

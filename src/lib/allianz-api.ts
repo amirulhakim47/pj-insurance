@@ -28,6 +28,10 @@ async function request<T>(
       code: 'NETWORK_ERROR',
       message: res.statusText,
     }));
+    if (!error.requestId) {
+      const headerId = res.headers.get('X-Request-ID');
+      if (headerId) error.requestId = headerId;
+    }
     throw error;
   }
 

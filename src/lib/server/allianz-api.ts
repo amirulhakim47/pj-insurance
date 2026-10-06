@@ -1,4 +1,10 @@
 import { getAccessToken } from './allianz-auth';
+import {
+  AllianzApiError,
+  extractAllianzErrors,
+  mapVehicleDetailsError,
+} from './allianz-errors';
+import { logAllianz } from './allianz-log';
 
 function getBaseUrl(): string {
   const base =
@@ -6,8 +12,70 @@ function getBaseUrl(): string {
   return `${base}/v1/openapi/mci`;
 }
 
+export function getAllianzApiHost(): string {
+  const base =
+    process.env.ALLIANZ_BASE_URL ?? 'https://asia-uat-malaysia.apis.allianz.com';
+  try {
+    return new URL(base).host;
+  } catch {
+    return base;
+  }
+}
+
 function generateRequestId(): string {
   return crypto.randomUUID();
+}
+
+function shouldLogResponseBody(): boolean {
+  return (
+    process.env.NODE_ENV !== 'production' ||
+    process.env.ALLIANZ_LOG_RESPONSES === 'true'
+  );
+}
+
+async function parseJsonBody(response: Response): Promise<unknown> {
+  const text = await response.text();
+  if (!text.trim()) return {};
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return { message: text.slice(0, 500) };
+  }
+}
+
+function plateFromRequestBody(body: unknown): string | undefined {
+  if (!body || typeof body !== 'object') return undefined;
+  const id = (body as { vehicleLicenseId?: unknown }).vehicleLicenseId;
+  return typeof id === 'string' && id.trim() ? id : undefined;
+}
+
+function throwForBusinessErrors(
+  path: string,
+  requestId: string,
+  httpStatus: number,
+  data: unknown,
+  requestBody?: unknown,
+): void {
+  const allianzErrors = extractAllianzErrors(data);
+  if (allianzErrors.length === 0) return;
+
+  const plate = path === '/vehicleDetails' ? plateFromRequestBody(requestBody) : undefined;
+  const mapped =
+    path === '/vehicleDetails'
+      ? mapVehicleDetailsError(allianzErrors, plate)
+      : {
+          code: 'ALLIANZ_BUSINESS_ERROR' as const,
+          userMessage: allianzErrors.join('; '),
+        };
+
+  throw new AllianzApiError({
+    status: httpStatus === 200 ? 422 : httpStatus,
+    code: mapped.code,
+    requestId,
+    allianzErrors,
+    userMessage: mapped.userMessage,
+    cause: allianzErrors.join('; '),
+  });
 }
 
 async function allianzFetch<T>(
@@ -17,6 +85,7 @@ async function allianzFetch<T>(
   const token = await getAccessToken();
   const requestId = generateRequestId();
   const method = options.method ?? 'GET';
+  const started = Date.now();
 
   let url = `${getBaseUrl()}${path}`;
   if (options.params) {
@@ -24,10 +93,12 @@ async function allianzFetch<T>(
     if (qs) url += `?${qs}`;
   }
 
-  const verbose = process.env.NODE_ENV !== 'production';
-  if (verbose) {
-    console.log(`[Allianz] ${method} ${path} | X-Request-ID: ${requestId}`);
-  }
+  logAllianz('info', 'request_start', {
+    method,
+    path,
+    requestId,
+    apiHost: getAllianzApiHost(),
+  });
 
   const headers: Record<string, string> = {
     Authorization: `Bearer ${token}`,
@@ -41,24 +112,65 @@ async function allianzFetch<T>(
   }
 
   const response = await fetch(url, fetchOptions);
-
-  const data = await response.json();
+  const data = await parseJsonBody(response);
+  const durationMs = Date.now() - started;
 
   if (!response.ok) {
-    if (verbose) {
-      console.error(`[Allianz] Error ${response.status}:`, JSON.stringify(data));
-    } else {
-      console.error(`[Allianz] Error ${response.status} ${method} ${path} | X-Request-ID: ${requestId}`);
+    const allianzErrors = extractAllianzErrors(data);
+    logAllianz('error', 'http_error', {
+      method,
+      path,
+      requestId,
+      httpStatus: response.status,
+      durationMs,
+      allianzErrors,
+      ...(shouldLogResponseBody() ? { body: data } : {}),
+    });
+
+    if (allianzErrors.length > 0) {
+      throwForBusinessErrors(path, requestId, response.status, data, options.body);
     }
-    const error: any = new Error(`Allianz API error: ${response.status}`);
-    error.status = response.status;
-    error.response = { data };
-    throw error;
+
+    throw new AllianzApiError({
+      status: response.status,
+      code: 'ALLIANZ_HTTP_ERROR',
+      requestId,
+      allianzErrors: allianzErrors.length ? allianzErrors : [response.statusText],
+      userMessage: 'Unable to reach Allianz services. Please try again shortly.',
+      cause: `HTTP ${response.status}`,
+    });
   }
 
-  if (verbose) {
-    console.log(`[Allianz] Response ${response.status} ${method} ${path}:`, JSON.stringify(data, null, 2));
+  try {
+    throwForBusinessErrors(path, requestId, response.status, data, options.body);
+  } catch (err) {
+    if (err instanceof AllianzApiError) {
+      logAllianz('warn', 'business_error', {
+        method,
+        path,
+        requestId,
+        httpStatus: response.status,
+        durationMs,
+        code: err.code,
+        allianzErrors: err.allianzErrors,
+        ...(shouldLogResponseBody() ? { body: data } : {}),
+      });
+    }
+    throw err;
   }
+
+  logAllianz('info', 'request_success', {
+    method,
+    path,
+    requestId,
+    httpStatus: response.status,
+    durationMs,
+  });
+
+  if (shouldLogResponseBody()) {
+    logAllianz('info', 'response_body', { requestId, path, body: data });
+  }
+
   return data as T;
 }
 
