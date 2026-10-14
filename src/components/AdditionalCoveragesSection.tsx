@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 import {
   Check,
   ChevronDown,
@@ -12,56 +13,211 @@ import {
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ADDON_TOOLTIPS, POPULAR_ADDON_CODES, sortAdditionalCovers } from '@/config/addon-tooltips';
+import {
+  ADDON_TOOLTIPS,
+  buildCollapsedAddonPreview,
+  isPopularAddonCover,
+  sortAdditionalCovers,
+} from '@/config/addon-tooltips';
 import {
   GAS_KIT_MAX_SI,
   WINDSCREEN_MAX_SI,
   WINDSCREEN_MIN_SI,
+  formatSumInsuredInputTyping,
+  formatSumInsuredThousands,
+  parseSumInsuredDigits,
 } from '@/lib/addon-quote';
 import type { AdditionalCoverItem } from '@/types/allianz';
+import { sanitizePersonNameInput } from '@/lib/validations';
 
 const COLLAPSED_PREVIEW_COUNT = 5;
 const SCROLL_MAX_HEIGHT = 'max-h-[min(28rem,55vh)]';
 
 type FilterMode = 'all' | 'selected';
 
+const VIEWPORT_GUTTER_PX = 16;
+/** Mobile sticky Proceed bar on results page — keep tooltip above it */
+const MOBILE_STICKY_FOOTER_PX = 96;
+const MOBILE_BREAKPOINT_PX = 640;
+
+const TOOLTIP_PANEL_CLASS =
+  'fixed z-[200] bg-popover border border-border rounded-xl shadow-lg p-3 text-xs text-popover-foreground leading-relaxed pointer-events-auto max-h-[min(45vh,20rem)] overflow-y-auto overscroll-contain sm:w-72 sm:max-w-[calc(100vw-2rem)]';
+
+function computeTooltipStyle(
+  anchor: HTMLElement,
+  popover: HTMLElement | null,
+): React.CSSProperties {
+  const rect = anchor.getBoundingClientRect();
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const popH = popover?.offsetHeight ?? 120;
+  const gap = 8;
+  const isMobile = vw < MOBILE_BREAKPOINT_PX;
+
+  if (isMobile) {
+    const bottomLimit = vh - MOBILE_STICKY_FOOTER_PX;
+    const spaceAbove = rect.top - VIEWPORT_GUTTER_PX;
+    const spaceBelow = bottomLimit - rect.bottom;
+    const openBelow = spaceBelow >= popH + gap || spaceBelow >= spaceAbove;
+    let top = openBelow ? rect.bottom + gap : rect.top - popH - gap;
+    if (openBelow) {
+      top = Math.min(top, bottomLimit - popH - VIEWPORT_GUTTER_PX);
+    } else {
+      top = Math.max(VIEWPORT_GUTTER_PX, top);
+    }
+    return {
+      top,
+      left: VIEWPORT_GUTTER_PX,
+      right: VIEWPORT_GUTTER_PX,
+      width: vw - VIEWPORT_GUTTER_PX * 2,
+      transform: 'none',
+    };
+  }
+
+  const popW = popover?.offsetWidth ?? 288;
+  const centerX = rect.left + rect.width / 2;
+  const halfW = popW / 2;
+  const left = Math.min(
+    Math.max(centerX, VIEWPORT_GUTTER_PX + halfW),
+    vw - VIEWPORT_GUTTER_PX - halfW,
+  );
+  const spaceAbove = rect.top;
+  const spaceBelow = vh - rect.bottom;
+  const openBelow = spaceBelow >= popH + gap || spaceBelow >= spaceAbove;
+  let top = openBelow ? rect.bottom + gap : rect.top - popH - gap;
+  top = Math.max(VIEWPORT_GUTTER_PX, Math.min(top, vh - VIEWPORT_GUTTER_PX - popH));
+  return { top, left, transform: 'translateX(-50%)' };
+}
+
 function TooltipButton({ coverCode }: { coverCode: string }) {
   const [open, setOpen] = React.useState(false);
+  const [tooltipStyle, setTooltipStyle] = React.useState<React.CSSProperties | null>(null);
+  const buttonRef = React.useRef<HTMLButtonElement>(null);
+  const popoverRef = React.useRef<HTMLDivElement>(null);
   const tooltip = ADDON_TOOLTIPS[coverCode];
+
+  const reposition = React.useCallback(() => {
+    const anchor = buttonRef.current;
+    if (!anchor) return;
+    setTooltipStyle(computeTooltipStyle(anchor, popoverRef.current));
+  }, []);
+
+  React.useLayoutEffect(() => {
+    if (!open) {
+      setTooltipStyle(null);
+      return;
+    }
+    reposition();
+    const id = requestAnimationFrame(() => {
+      reposition();
+      requestAnimationFrame(reposition);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [open, reposition, tooltip?.text]);
+
+  React.useEffect(() => {
+    if (!open || !tooltip) return;
+    reposition();
+    const onScroll = () => reposition();
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', reposition);
+    return () => {
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', reposition);
+    };
+  }, [open, tooltip, reposition]);
+
+  React.useEffect(() => {
+    if (!open || !tooltip) return;
+    const onPointerDown = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (buttonRef.current?.contains(target)) return;
+      if (popoverRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    return () => document.removeEventListener('mousedown', onPointerDown);
+  }, [open, tooltip]);
+
   if (!tooltip) return null;
 
-  return (
-    <span className="relative inline-block">
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          setOpen(!open);
-        }}
-        className="text-muted-foreground hover:text-primary transition-colors p-0.5 rounded-sm"
-        aria-label="More info about this coverage"
-      >
-        <HelpCircle className="w-3.5 h-3.5" />
-      </button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden />
-          <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 max-w-[calc(100vw-2rem)] bg-popover border border-border rounded-xl shadow-lg p-3 text-xs text-popover-foreground leading-relaxed">
-            {tooltip.text}
-            {tooltip.link && (
-              <a
-                href={tooltip.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block mt-1.5 text-primary hover:underline font-medium"
-              >
-                Learn more <ExternalLink className="w-2.5 h-2.5 inline" />
-              </a>
-            )}
-          </div>
-        </>
+  const panel = open && tooltipStyle && (
+    <div
+      ref={popoverRef}
+      role="tooltip"
+      className={TOOLTIP_PANEL_CLASS}
+      style={tooltipStyle}
+    >
+      {tooltip.text}
+      {tooltip.link && (
+        <a
+          href={tooltip.link}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block mt-1.5 text-primary hover:underline font-medium"
+        >
+          Learn more <ExternalLink className="w-2.5 h-2.5 inline" />
+        </a>
       )}
-    </span>
+    </div>
+  );
+
+  return (
+    <>
+      <span className="inline-block">
+        <button
+          ref={buttonRef}
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setOpen((v) => !v);
+          }}
+          className="text-muted-foreground hover:text-primary transition-colors p-0.5 rounded-sm"
+          aria-label="More info about this coverage"
+          aria-expanded={open}
+        >
+          <HelpCircle className="w-3.5 h-3.5" />
+        </button>
+      </span>
+      {typeof document !== 'undefined' && panel ? createPortal(panel, document.body) : null}
+    </>
+  );
+}
+
+function SumInsuredTextInput({
+  label,
+  hint,
+  committedAmount,
+  onCommit,
+}: {
+  label: string;
+  hint: string;
+  committedAmount: number;
+  onCommit: (digitsOnly: string) => void;
+}) {
+  const [draft, setDraft] = React.useState<string | null>(null);
+  const display =
+    draft ?? formatSumInsuredThousands(committedAmount);
+
+  return (
+    <div>
+      <label className="text-xs text-muted-foreground">{label}</label>
+      <input
+        type="text"
+        inputMode="numeric"
+        autoComplete="off"
+        value={display}
+        onChange={(e) => setDraft(formatSumInsuredInputTyping(e.target.value))}
+        onBlur={() => {
+          const source = draft ?? formatSumInsuredThousands(committedAmount);
+          setDraft(null);
+          onCommit(String(parseSumInsuredDigits(source)));
+        }}
+        className="mt-1 w-full max-w-[9rem] rounded-lg border border-input px-2 py-1.5 text-xs tabular-nums"
+        aria-label={label}
+      />
+      <p className="text-[10px] text-muted-foreground mt-0.5">{hint}</p>
+    </div>
   );
 }
 
@@ -84,6 +240,7 @@ function AddonCoverRow({
   onToggle,
   addonInputs,
   onInputChange,
+  onSumInsuredCommit,
   ehailingDriver,
   onEhailingChange,
   ehailingErrors,
@@ -96,12 +253,13 @@ function AddonCoverRow({
   onToggle: () => void;
   addonInputs: Record<string, { sumInsured?: number; cartDay?: string; cartAmount?: string; planCode?: string }>;
   onInputChange: (code: string, field: string, value: string) => void;
+  onSumInsuredCommit: (code: string, rawValue: string) => void;
   ehailingDriver: { fullName: string; idNumber: string };
   onEhailingChange: (d: { fullName: string; idNumber: string }) => void;
   ehailingErrors?: { fullName?: string; idNumber?: string };
 }) {
   const inputs = addonInputs[cover.coverCode];
-  const isPopular = POPULAR_ADDON_CODES.has(cover.coverCode);
+  const isPopular = isPopularAddonCover(cover);
   const hasDescription = Boolean(cover.coverDescription?.trim());
 
   return (
@@ -179,33 +337,23 @@ function AddonCoverRow({
               )}
 
               {cover.coverCode === '89' && (
-                <div>
-                  <label className="text-xs text-muted-foreground">Windscreen sum insured (RM)</label>
-                  <input
-                    type="number"
-                    min={WINDSCREEN_MIN_SI}
-                    max={WINDSCREEN_MAX_SI}
-                    step={100}
-                    value={inputs?.sumInsured ?? cover.coverSumInsured ?? WINDSCREEN_MIN_SI}
-                    onChange={(e) => onInputChange(cover.coverCode, 'sumInsured', e.target.value)}
-                    className="mt-1 w-full max-w-[8rem] rounded-lg border border-input px-2 py-1.5 text-xs"
-                  />
-                </div>
+                <SumInsuredTextInput
+                  label="Windscreen sum insured (RM)"
+                  hint={`RM ${formatSumInsuredThousands(WINDSCREEN_MIN_SI)}–${formatSumInsuredThousands(WINDSCREEN_MAX_SI)}`}
+                  committedAmount={
+                    inputs?.sumInsured ?? cover.coverSumInsured ?? WINDSCREEN_MIN_SI
+                  }
+                  onCommit={(digits) => onSumInsuredCommit(cover.coverCode, digits)}
+                />
               )}
 
               {cover.coverCode === '97A' && (
-                <div>
-                  <label className="text-xs text-muted-foreground">Gas kit sum insured (RM)</label>
-                  <input
-                    type="number"
-                    min={100}
-                    max={GAS_KIT_MAX_SI}
-                    step={100}
-                    value={inputs?.sumInsured ?? cover.coverSumInsured ?? 1000}
-                    onChange={(e) => onInputChange(cover.coverCode, 'sumInsured', e.target.value)}
-                    className="mt-1 w-full max-w-[8rem] rounded-lg border border-input px-2 py-1.5 text-xs"
-                  />
-                </div>
+                <SumInsuredTextInput
+                  label="Gas kit sum insured (RM)"
+                  hint={`RM ${formatSumInsuredThousands(100)}–${formatSumInsuredThousands(GAS_KIT_MAX_SI)}`}
+                  committedAmount={inputs?.sumInsured ?? cover.coverSumInsured ?? 1000}
+                  onCommit={(digits) => onSumInsuredCommit(cover.coverCode, digits)}
+                />
               )}
 
               {cover.coverCode === '112' && (
@@ -253,14 +401,17 @@ function AddonCoverRow({
 
               {cover.coverCode === 'A202' && (
                 <div id="ehailing-driver-section" className="space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground">e-Hailing driver details</p>
+                  <p className="text-xs font-medium text-muted-foreground">e-Hailing driver details (optional)</p>
                   <div>
-                    <label className="text-xs text-muted-foreground">
-                      Driver name <span className="text-destructive">*</span>
-                    </label>
+                    <label className="text-xs text-muted-foreground">Driver name</label>
                     <input
                       value={ehailingDriver.fullName}
-                      onChange={(e) => onEhailingChange({ ...ehailingDriver, fullName: e.target.value.toUpperCase() })}
+                      onChange={(e) =>
+                        onEhailingChange({
+                          ...ehailingDriver,
+                          fullName: sanitizePersonNameInput(e.target.value),
+                        })
+                      }
                       aria-invalid={Boolean(ehailingErrors?.fullName)}
                       className={`mt-1 w-full rounded-lg border px-2 py-1.5 text-xs uppercase ${
                         ehailingErrors?.fullName ? 'border-destructive ring-1 ring-destructive/30' : 'border-input'
@@ -272,9 +423,7 @@ function AddonCoverRow({
                     )}
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground">
-                      ID no. <span className="text-destructive">*</span>
-                    </label>
+                    <label className="text-xs text-muted-foreground">ID no.</label>
                     <input
                       value={ehailingDriver.idNumber}
                       onChange={(e) => onEhailingChange({ ...ehailingDriver, idNumber: e.target.value })}
@@ -306,6 +455,7 @@ export function AdditionalCoveragesSection({
   onToggleAddon,
   addonInputs,
   onInputChange,
+  onSumInsuredCommit,
   ehailingDriver,
   onEhailingChange,
   ehailingErrors,
@@ -317,6 +467,7 @@ export function AdditionalCoveragesSection({
   onToggleAddon: (cover: AdditionalCoverItem) => void;
   addonInputs: Record<string, { sumInsured?: number; cartDay?: string; cartAmount?: string; planCode?: string }>;
   onInputChange: (code: string, field: string, value: string) => void;
+  onSumInsuredCommit: (code: string, rawValue: string) => void;
   ehailingDriver: { fullName: string; idNumber: string };
   onEhailingChange: (d: { fullName: string; idNumber: string }) => void;
   ehailingErrors?: { fullName?: string; idNumber?: string };
@@ -338,12 +489,18 @@ export function AdditionalCoveragesSection({
     });
   }, [sorted, search, filter, selectedAddons]);
 
+  const collapsedPreview = React.useMemo(
+    () => buildCollapsedAddonPreview(filtered, COLLAPSED_PREVIEW_COUNT),
+    [filtered],
+  );
+
   const visibleList = React.useMemo(() => {
     if (showAll || search.trim() || filter === 'selected') return filtered;
-    return filtered.slice(0, COLLAPSED_PREVIEW_COUNT);
-  }, [filtered, showAll, search, filter]);
+    return collapsedPreview;
+  }, [filtered, collapsedPreview, showAll, search, filter]);
 
   const hiddenCount = filtered.length - visibleList.length;
+  const listExpandable = filtered.length > collapsedPreview.length;
   const busy = isUpdating || pendingAddonSync;
 
   const selectedList = React.useMemo(
@@ -445,6 +602,7 @@ export function AdditionalCoveragesSection({
               onToggle={() => onToggleAddon(cover)}
               addonInputs={addonInputs}
               onInputChange={onInputChange}
+              onSumInsuredCommit={onSumInsuredCommit}
               ehailingDriver={ehailingDriver}
               onEhailingChange={onEhailingChange}
               ehailingErrors={cover.coverCode === 'A202' ? ehailingErrors : undefined}
@@ -453,7 +611,7 @@ export function AdditionalCoveragesSection({
         )}
       </div>
 
-      {!search.trim() && filter === 'all' && filtered.length > COLLAPSED_PREVIEW_COUNT && (
+      {!search.trim() && filter === 'all' && (showAll || listExpandable) && (
         <Button
           type="button"
           variant="outline"

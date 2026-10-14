@@ -1,11 +1,10 @@
 import { z } from 'zod';
 
-const NRIC_REGEX = /^\d{6}-\d{2}-\d{4}$/;
+export const NRIC_REGEX = /^\d{6}-\d{2}-\d{4}$/;
+export const PERSON_NAME_REGEX = /^[\p{L}\s'.-]+$/u;
 const PLATE_NUMBER_REGEX = /^[A-Z]{1,3}\s?\d{1,4}[A-Z]?$/i;
 const POSTCODE_REGEX = /^\d{5}$/;
 const PHONE_REGEX = /^(\+?6?01)[0-46-9]-*[0-9]{7,8}$/;
-const PERSON_NAME_REGEX = /^[\p{L}\s'.@/-]+$/u;
-
 const isValidNRICDate = (nric: string): boolean => {
   const match = nric.match(/^(\d{6})/);
   if (!match) return false;
@@ -27,6 +26,99 @@ const isValidAge = (nric: string): boolean => {
   const age = new Date().getFullYear() - birthYear;
   return age >= 16 && age <= 80;
 };
+
+export const DRIVER_MIN_AGE = 18;
+
+export function isValidDriverAgeFromNric(nric: string): boolean {
+  const match = nric.match(/^(\d{6})/);
+  if (!match) return false;
+  const yy = parseInt(match[1].substring(0, 2), 10);
+  const birthYear = yy > 30 ? 1900 + yy : 2000 + yy;
+  const age = new Date().getFullYear() - birthYear;
+  return age >= DRIVER_MIN_AGE && age <= 80;
+}
+
+export interface NamedDriverFields {
+  fullName: string;
+  idType: string;
+  idNumber: string;
+}
+
+export function sanitizePersonNameInput(value: string): string {
+  return value
+    .toUpperCase()
+    .replace(/[^\p{L}\s'.-]/gu, '')
+    .slice(0, 100);
+}
+
+const PASSPORT_ID_REGEX = /^[A-Za-z0-9]{6,12}$/;
+const OLD_IC_ID_REGEX = /^[A-Za-z0-9-]{4,20}$/;
+
+export function formatDriverIdentityInput(idType: string, value: string): string {
+  if (idType === 'NRIC') {
+    const digits = value.replace(/\D/g, '').slice(0, 12);
+    return formatNRIC(digits);
+  }
+  if (idType === 'PASS') {
+    return value
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '')
+      .slice(0, 12);
+  }
+  return value
+    .toUpperCase()
+    .replace(/[^A-Z0-9-]/g, '')
+    .slice(0, 20);
+}
+
+/** Re-apply formatting when ID type changes (e.g. NRIC dashes removed for passport). */
+export function reformatDriverIdForTypeChange(idType: string, idNumber: string): string {
+  return formatDriverIdentityInput(idType, idNumber);
+}
+
+export function validateNamedDriverFields(
+  driver: NamedDriverFields,
+): { fullName?: string; idNumber?: string } {
+  const errors: { fullName?: string; idNumber?: string } = {};
+  const name = driver.fullName.trim();
+  const id = driver.idNumber.trim();
+  const idDigits = id.replace(/\D/g, '');
+
+  if (!name) {
+    errors.fullName = 'Name is required';
+  } else if (!PERSON_NAME_REGEX.test(name)) {
+    errors.fullName = 'Name must not contain numbers or special characters';
+  }
+
+  if (!id) {
+    errors.idNumber = 'ID number is required';
+  } else if (driver.idType === 'NRIC') {
+    if (idDigits.length !== 12) {
+      errors.idNumber = 'NRIC must be exactly 12 digits';
+    } else if (!NRIC_REGEX.test(id)) {
+      errors.idNumber = 'Enter a valid NRIC (e.g., 123456-12-1234)';
+    } else if (!isValidNRICDate(id)) {
+      errors.idNumber = "Invalid birth date in NRIC (YYMMDD doesn't exist)";
+    } else if (!isValidDriverAgeFromNric(id)) {
+      errors.idNumber = `Driver must be at least ${DRIVER_MIN_AGE} years old`;
+    }
+  } else if (driver.idType === 'PASS') {
+    const compact = id.replace(/\s/g, '');
+    if (id.includes('-')) {
+      errors.idNumber = 'Passport number must not contain dashes — re-enter for passport';
+    } else if (!PASSPORT_ID_REGEX.test(compact)) {
+      errors.idNumber = 'Enter a valid passport number (6–12 letters or numbers)';
+    }
+  } else if (driver.idType === 'OLD_IC') {
+    if (!OLD_IC_ID_REGEX.test(id.replace(/\s/g, ''))) {
+      errors.idNumber = 'Enter a valid Old IC number (4–20 letters, numbers, or hyphens)';
+    }
+  } else if (!OLD_IC_ID_REGEX.test(id.replace(/\s/g, ''))) {
+    errors.idNumber = 'Enter a valid ID (4–20 characters)';
+  }
+
+  return errors;
+}
 
 const identityTypeEnum = z.enum(['NRIC', 'OLD_IC', 'PASS', 'POL', 'BR_NO']);
 
@@ -138,6 +230,15 @@ export const insuranceFormSchema = z
         code: z.ZodIssueCode.custom,
         message: 'Please select gender',
         path: ['gender'],
+      });
+    }
+
+    if (data.vehicleType === 'motorcycle') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          'Motorcycle cover is coming soon. Please select Car for Allianz private car comprehensive insurance.',
+        path: ['vehicleType'],
       });
     }
   });

@@ -2,6 +2,7 @@ import { getAccessToken } from './allianz-auth';
 import {
   AllianzApiError,
   extractAllianzErrors,
+  findEmptyRequestFields,
   mapVehicleDetailsError,
 } from './allianz-errors';
 import { logAllianz } from './allianz-log';
@@ -124,6 +125,7 @@ async function allianzFetch<T>(
       httpStatus: response.status,
       durationMs,
       allianzErrors,
+      ...(options.body ? { emptyRequestFields: findEmptyRequestFields(options.body) } : {}),
       ...(shouldLogResponseBody() ? { body: data } : {}),
     });
 
@@ -153,6 +155,7 @@ async function allianzFetch<T>(
         durationMs,
         code: err.code,
         allianzErrors: err.allianzErrors,
+        ...(options.body ? { emptyRequestFields: findEmptyRequestFields(options.body) } : {}),
         ...(shouldLogResponseBody() ? { body: data } : {}),
       });
     }

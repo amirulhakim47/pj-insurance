@@ -7,6 +7,10 @@ import {
   validatePostcode,
   formatNRIC,
   formatPlateNumber,
+  validateNamedDriverFields,
+  sanitizePersonNameInput,
+  formatDriverIdentityInput,
+  reformatDriverIdForTypeChange,
 } from '@/lib/validations';
 
 describe('insuranceFormSchema', () => {
@@ -46,6 +50,15 @@ describe('insuranceFormSchema', () => {
     expect(result.success).toBe(false);
   });
 
+  it('rejects numbers and special characters in full name', () => {
+    expect(insuranceFormSchema.safeParse({ ...validFormData, fullName: 'AHMAD@ALI' }).success).toBe(
+      false,
+    );
+    expect(insuranceFormSchema.safeParse({ ...validFormData, fullName: 'AHMAD123' }).success).toBe(
+      false,
+    );
+  });
+
   it('rejects invalid NRIC format', () => {
     const result = insuranceFormSchema.safeParse({ ...validFormData, nric: '123456' });
     expect(result.success).toBe(false);
@@ -77,6 +90,14 @@ describe('insuranceFormSchema', () => {
     // Born in 2001 = ~25 years old
     const result = insuranceFormSchema.safeParse({ ...validFormData, nric: '010103-01-1116' });
     expect(result.success).toBe(true);
+  });
+
+  it('rejects motorcycle for private car comprehensive flow', () => {
+    const result = insuranceFormSchema.safeParse({
+      ...validFormData,
+      vehicleType: 'motorcycle',
+    });
+    expect(result.success).toBe(false);
   });
 
   it('rejects invalid plate number', () => {
@@ -136,6 +157,14 @@ describe('customerDetailsSchema', () => {
     if (result.success) {
       expect(result.data.fullName).toBe('AHMAD BIN IBRAHIM');
     }
+  });
+
+  it('rejects special characters in policyholder name', () => {
+    const result = customerDetailsSchema.safeParse({
+      ...validCustomerDetails,
+      fullName: 'AHMAD@@BIN',
+    });
+    expect(result.success).toBe(false);
   });
 
   it('transforms addressLine1 to uppercase', () => {
@@ -312,6 +341,73 @@ describe('formatNRIC', () => {
 
   it('strips non-digit characters before formatting', () => {
     expect(formatNRIC('84-11-03-01-11-16')).toBe('841103-01-1116');
+  });
+});
+
+describe('validateNamedDriverFields', () => {
+  it('strips invalid characters while typing name', () => {
+    expect(sanitizePersonNameInput('@@EES')).toBe('EES');
+  });
+
+  it('caps NRIC input at 12 digits with formatting', () => {
+    expect(formatDriverIdentityInput('NRIC', '031212121212121212121212121212121212')).toBe(
+      '031212-12-1212',
+    );
+  });
+
+  it('reformats NRIC-shaped value when switching to passport', () => {
+    const reformatted = reformatDriverIdForTypeChange('PASS', '123123-12-3123FSDFSD');
+    expect(reformatted).toBe('123123123123');
+    const errors = validateNamedDriverFields({
+      fullName: 'ALI',
+      idType: 'PASS',
+      idNumber: reformatted,
+    });
+    expect(errors.idNumber).toBeUndefined();
+  });
+
+  it('rejects passport with dashes after type switch from NRIC', () => {
+    const errors = validateNamedDriverFields({
+      fullName: 'ALI',
+      idType: 'PASS',
+      idNumber: '123123-12-3123',
+    });
+    expect(errors.idNumber).toMatch(/dash/i);
+  });
+
+  it('validates old IC length and characters', () => {
+    expect(
+      validateNamedDriverFields({
+        fullName: 'ALI',
+        idType: 'OLD_IC',
+        idNumber: 'AB',
+      }).idNumber,
+    ).toBeDefined();
+    expect(
+      validateNamedDriverFields({
+        fullName: 'ALI',
+        idType: 'OLD_IC',
+        idNumber: 'A123-4567',
+      }).idNumber,
+    ).toBeUndefined();
+  });
+
+  it('rejects special characters in name', () => {
+    const errors = validateNamedDriverFields({
+      fullName: 'AHMAD@ALI',
+      idType: 'NRIC',
+      idNumber: '841103-01-1116',
+    });
+    expect(errors.fullName).toBeDefined();
+  });
+
+  it('requires valid 12-digit NRIC and minimum driver age', () => {
+    const errors = validateNamedDriverFields({
+      fullName: 'AHMAD BIN ALI',
+      idType: 'NRIC',
+      idNumber: '150103-01-1116',
+    });
+    expect(errors.idNumber).toMatch(/18/);
   });
 });
 

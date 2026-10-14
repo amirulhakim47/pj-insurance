@@ -48,15 +48,69 @@ export const ADDON_TOOLTIPS: Record<string, { text: string; link?: string }> = {
 /** Shown first in the list when Allianz returns many options. */
 export const POPULAR_ADDON_CODES = new Set(['PAB-ERW', '89', 'A202', '72', '57', '112']);
 
+const P2P_COVER_NAME_PATTERN = /Peer-to-Peer|\(P2P\)|Point\s*to\s*Point/i;
+const DRIVE_GUARD_NAME_PATTERN = /Drive\s*Guard/i;
+
+function parseExcludedAddonCodes(): Set<string> {
+  const raw = process.env.NEXT_PUBLIC_EXCLUDED_ADDON_CODES ?? '';
+  return new Set(
+    raw
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
+  );
+}
+
+export function isAgentExcludedCover(c: { coverCode: string; coverName?: string }): boolean {
+  if (parseExcludedAddonCodes().has(c.coverCode)) return true;
+  if (c.coverName && P2P_COVER_NAME_PATTERN.test(c.coverName)) return true;
+  return false;
+}
+
 export function isCoverHidden(c: { azolHiddenInd?: number }): boolean {
   return c.azolHiddenInd === 1;
 }
 
-export function sortAdditionalCovers<T extends { coverCode: string; sequence: number }>(covers: T[]): T[] {
+/** DC Auto channel: hide Allianz-hidden and agent-restricted covers (e.g. P2P). */
+export function isCoverVisibleForDcAuto(c: {
+  coverCode: string;
+  coverName?: string;
+  azolHiddenInd?: number;
+}): boolean {
+  if (isCoverHidden(c)) return false;
+  if (isAgentExcludedCover(c)) return false;
+  return true;
+}
+
+export function isPopularAddonCover(c: { coverCode: string; coverName?: string }): boolean {
+  if (POPULAR_ADDON_CODES.has(c.coverCode)) return true;
+  return Boolean(c.coverName && DRIVE_GUARD_NAME_PATTERN.test(c.coverName));
+}
+
+export function sortAdditionalCovers<
+  T extends { coverCode: string; coverName?: string; sequence: number },
+>(covers: T[]): T[] {
   return [...covers].sort((a, b) => {
-    const aPop = POPULAR_ADDON_CODES.has(a.coverCode) ? 0 : 1;
-    const bPop = POPULAR_ADDON_CODES.has(b.coverCode) ? 0 : 1;
+    const aPop = isPopularAddonCover(a) ? 0 : 1;
+    const bPop = isPopularAddonCover(b) ? 0 : 1;
     if (aPop !== bPop) return aPop - bPop;
     return a.sequence - b.sequence;
+  });
+}
+
+/** Collapsed list: always every popular add-on (incl. Drive Guard by name), plus other covers up to `minCount`. */
+export function buildCollapsedAddonPreview<
+  T extends { coverCode: string; coverName?: string },
+>(sortedFiltered: T[], minCount = 5): T[] {
+  const popularCount = sortedFiltered.filter(isPopularAddonCover).length;
+  const maxNonPopular = Math.max(0, minCount - popularCount);
+  let nonPopularTaken = 0;
+  return sortedFiltered.filter((cover) => {
+    if (isPopularAddonCover(cover)) return true;
+    if (nonPopularTaken < maxNonPopular) {
+      nonPopularTaken += 1;
+      return true;
+    }
+    return false;
   });
 }

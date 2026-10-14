@@ -2,14 +2,24 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AllianzLogo } from '@/components/ui/allianz-logo';
 import { PageLayout, Container, StepIndicator } from '@/components/ui/layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, ArrowRight, User, Phone, MapPin, Users } from 'lucide-react';
-import { customerDetailsSchema, type CustomerDetailsData } from '@/lib/validations';
+import {
+  customerDetailsSchema,
+  reformatDriverIdForTypeChange,
+  sanitizePersonNameInput,
+  validateNamedDriverFields,
+  type CustomerDetailsData,
+} from '@/lib/validations';
+import {
+  AdditionalDriverFormFields,
+  type AdditionalDriverFormValues,
+} from '@/components/AdditionalDriverFormFields';
 import { getLOV } from '@/lib/allianz-api';
 import type { InsuranceFormData } from '@/types';
 import type { VehicleDetailsResponse } from '@/types/allianz';
@@ -67,7 +77,7 @@ export default function CustomerDetailsPage() {
   const [postcodeChecking, setPostcodeChecking] = React.useState(false);
 
   const {
-    register, handleSubmit, setValue, watch,
+    register, handleSubmit, setValue, watch, control,
     formState: { errors, isSubmitting },
   } = useForm<CustomerDetailsData>({
     resolver: zodResolver(customerDetailsSchema),
@@ -146,15 +156,77 @@ export default function CustomerDetailsPage() {
     if (postcode?.length === 5) validatePostcode(postcode);
   }, [postcode, validatePostcode]);
 
-  const updateDriverInfo = (index: number, field: keyof AdditionalDriverInfo, value: string) => {
+  const [additionalDriverErrors, setAdditionalDriverErrors] = React.useState<
+    Record<number, { fullName?: string; idNumber?: string }>
+  >({});
+  const [driverFormError, setDriverFormError] = React.useState<string | null>(null);
+
+  const updateDriverInfo = (
+    index: number,
+    field: keyof AdditionalDriverFormValues,
+    value: string,
+  ) => {
     setAdditionalDrivers((prev) => {
-      const updated = prev.map((d, i) => i === index ? { ...d, [field]: value } : d);
+      const updated = prev.map((d, i) => {
+        if (i !== index) return d;
+        if (field === 'idType') {
+          const idNumber = reformatDriverIdForTypeChange(value, d.idNumber);
+          return { ...d, idType: value, idNumber };
+        }
+        return { ...d, [field]: value };
+      });
       sessionStorage.setItem('allianz_additionalDrivers', JSON.stringify(updated));
       return updated;
     });
+    if (field === 'idType') {
+      const driver = additionalDrivers[index];
+      if (driver) {
+        const idNumber = reformatDriverIdForTypeChange(value, driver.idNumber);
+        const errors = validateNamedDriverFields({
+          ...driver,
+          idType: value,
+          idNumber,
+        });
+        setAdditionalDriverErrors((prev) => ({ ...prev, [index]: errors }));
+      }
+      return;
+    }
+    setAdditionalDriverErrors((prev) => {
+      const row = prev[index];
+      if (!row) return prev;
+      const key = field === 'fullName' ? 'fullName' : field === 'idNumber' ? 'idNumber' : null;
+      if (!key || !row[key]) return prev;
+      return { ...prev, [index]: { ...row, [key]: undefined } };
+    });
+  };
+
+  const validateAdditionalDriverRow = (index: number) => {
+    const driver = additionalDrivers[index];
+    if (!driver) return {};
+    const errors = validateNamedDriverFields(driver);
+    setAdditionalDriverErrors((prev) => ({ ...prev, [index]: errors }));
+    return errors;
   };
 
   const onSubmit = (data: CustomerDetailsData) => {
+    if (driverPlan === '1' || driverPlan === '2') {
+      const nextErrors: Record<number, { fullName?: string; idNumber?: string }> = {};
+      let blocked = false;
+      for (let i = 0; i < additionalDrivers.length; i++) {
+        const errors = validateNamedDriverFields(additionalDrivers[i]);
+        if (errors.fullName || errors.idNumber) {
+          nextErrors[i] = errors;
+          blocked = true;
+        }
+      }
+      if (blocked) {
+        setAdditionalDriverErrors(nextErrors);
+        setDriverFormError('Please correct additional driver details below.');
+        return;
+      }
+    }
+    setDriverFormError(null);
+    setAdditionalDriverErrors({});
     sessionStorage.setItem('allianz_customerDetails', JSON.stringify(data));
     sessionStorage.setItem('allianz_additionalDrivers', JSON.stringify(additionalDrivers));
     router.push('/payment');
@@ -183,7 +255,23 @@ export default function CustomerDetailsPage() {
               <CardContent className="space-y-4">
                 <div>
                   <label className="text-sm font-medium" htmlFor="fullName">Name as per ID *</label>
-                  <input id="fullName" {...register('fullName')} className={`${inputClass} uppercase`} placeholder="FULL NAME AS PER IC" />
+                  <Controller
+                    name="fullName"
+                    control={control}
+                    render={({ field }) => (
+                      <input
+                        id="fullName"
+                        value={field.value ?? ''}
+                        onChange={(e) => field.onChange(sanitizePersonNameInput(e.target.value))}
+                        onBlur={field.onBlur}
+                        className={`${inputClass} uppercase ${errors.fullName ? 'border-destructive ring-1 ring-destructive/30' : ''}`}
+                        placeholder="FULL NAME AS PER IC"
+                        maxLength={100}
+                        autoComplete="name"
+                        aria-invalid={Boolean(errors.fullName)}
+                      />
+                    )}
+                  />
                   {errors.fullName && <p className="text-xs text-destructive mt-1">{errors.fullName.message}</p>}
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -246,12 +334,14 @@ export default function CustomerDetailsPage() {
                   {additionalDrivers.map((driver, idx) => (
                     <div key={idx} className="space-y-3 pb-4 border-b border-border/40 last:border-0 last:pb-0">
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Driver {idx + 1}</p>
-                      <div><label className="text-sm font-medium">Name as per ID *</label><input value={driver.fullName} onChange={(e) => updateDriverInfo(idx, 'fullName', e.target.value.toUpperCase())} className={`${inputClass} uppercase`} placeholder="FULL NAME" /></div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div><label className="text-sm font-medium">Nationality *</label><select value={driver.nationality} onChange={(e) => updateDriverInfo(idx, 'nationality', e.target.value)} className={inputClass}>{NATIONALITY_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}</select></div>
-                        <div><label className="text-sm font-medium">ID Type *</label><select value={driver.idType} onChange={(e) => updateDriverInfo(idx, 'idType', e.target.value)} className={inputClass}><option value="NRIC">NRIC</option><option value="OLD_IC">Old IC</option><option value="PASS">Passport</option></select></div>
-                      </div>
-                      <div><label className="text-sm font-medium">ID Number *</label><input value={driver.idNumber} onChange={(e) => updateDriverInfo(idx, 'idNumber', e.target.value)} className={inputClass} placeholder="ID Number" /></div>
+                      <AdditionalDriverFormFields
+                        driver={driver}
+                        fieldErrors={additionalDriverErrors[idx]}
+                        onFieldChange={(field, value) => updateDriverInfo(idx, field, value)}
+                        onFieldBlur={() => validateAdditionalDriverRow(idx)}
+                        nameInputClassName={`${inputClass} uppercase`}
+                        selectClassName={inputClass}
+                      />
                     </div>
                   ))}
                 </CardContent>
@@ -265,6 +355,10 @@ export default function CustomerDetailsPage() {
                 <p className="text-sm font-semibold">{vehicleDetails.vehicleLicenseId} — {vehicleDetails.vehicleMake} {vehicleDetails.vehicleModelDesc || vehicleDetails.vehicleModel}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">{vehicleDetails.yearOfManufacture} | {vehicleDetails.vehicleEngineCC} CC | NCD {vehicleDetails.ncdPercentage}%</p>
               </div>
+            )}
+
+            {driverFormError && (
+              <p className="text-sm text-destructive text-center">{driverFormError}</p>
             )}
 
             {/* Actions */}

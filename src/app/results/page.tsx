@@ -12,20 +12,37 @@ import {
   AdditionalCoveragesSection,
   RoadRangersTooltipButton,
 } from '@/components/AdditionalCoveragesSection';
-import { isCoverHidden } from '@/config/addon-tooltips';
+import { isCoverVisibleForDcAuto } from '@/config/addon-tooltips';
 import { generateQuote, getLOV, checkUBB, updateQuote } from '@/lib/allianz-api';
+import { createQuoteUpdateGate } from '@/lib/quote-update-gate';
+import { ageOnDate, birthDateFromNric } from '@/lib/age';
 import { formatCoveragePeriod } from '@/lib/date-format';
 import {
   buildAdditionalCoverPayload,
   clampWindscreenSumInsured,
   clampGasKitSumInsured,
   defaultAddonInputsForCover,
-  groupAvVariantsBySumInsured,
+  getUniqueAvVariantNames,
+  getAvTiersForVariantName,
   avTierLabel,
   type AddonInputState,
 } from '@/lib/addon-quote';
 import { applyDemoQuoteUpdate } from '@/lib/demo-quote';
+import {
+  ALLIANZ_IS_DEMO_KEY,
+  restoreInsuranceFormDraftFromSubmitted,
+  vehicleDetailsPagePath,
+} from '@/lib/insurance-session';
 import { validateQuotationStepBeforeProceed } from '@/lib/quote-step-validation';
+import {
+  AdditionalDriverFormFields,
+  type AdditionalDriverFormValues,
+} from '@/components/AdditionalDriverFormFields';
+import {
+  formatDriverIdentityInput,
+  reformatDriverIdForTypeChange,
+  validateNamedDriverFields,
+} from '@/lib/validations';
 import { syncQuotePremiumForPayment } from '@/lib/quote-premium-sync';
 import {
   ALLIANZ_DOCUMENTS,
@@ -33,6 +50,7 @@ import {
   RAHMAH_MAX_ENGINE_CC,
   RAHMAH_MAX_SUM_INSURED,
   RAHMAH_PACKAGE_CODE,
+  RAHMAH_INCLUSIONS,
 } from '@/config/allianz-documents';
 import type { InsuranceFormData } from '@/types';
 import type {
@@ -60,11 +78,6 @@ interface AdditionalDriverInfo {
   idType: string;
   idNumber: string;
 }
-
-const NATIONALITY_OPTIONS = [
-  'MALAYSIA', 'SINGAPORE', 'INDONESIA', 'THAILAND', 'PHILIPPINES',
-  'INDIA', 'CHINA', 'BANGLADESH', 'PAKISTAN', 'MYANMAR', 'OTHERS',
-];
 
 const DEMO_FORM_DATA: InsuranceFormData = {
   fullName: 'DEMO USER', vehicleType: 'car', plateNumber: 'VAP2104', nric: '841103-01-1116',
@@ -151,24 +164,41 @@ function ResultsPage() {
 
   const [siBasis, setSiBasis] = React.useState<'MV' | 'AV'>('MV');
   const [avVariants, setAvVariants] = React.useState<AVVariantItem[]>([]);
+  const [selectedAvVariantName, setSelectedAvVariantName] = React.useState<string | null>(null);
   const [selectedAvVariant, setSelectedAvVariant] = React.useState<AVVariantItem | null>(null);
   const [isLoadingAv, setIsLoadingAv] = React.useState(false);
   const [isReconditioned, setIsReconditioned] = React.useState<boolean | null>(null);
+  const [recondError, setRecondError] = React.useState<string | null>(null);
   const [avAvailable, setAvAvailable] = React.useState(true);
   const [showRecondTooltip, setShowRecondTooltip] = React.useState(false);
 
   const [driverPlan, setDriverPlan] = React.useState<'0' | '1' | '2' | 'unlimited'>('0');
   const [additionalDrivers, setAdditionalDrivers] = React.useState<AdditionalDriverInfo[]>([]);
+  const [additionalDriverErrors, setAdditionalDriverErrors] = React.useState<
+    Record<number, { fullName?: string; idNumber?: string }>
+  >({});
   const [ehailingDriver, setEhailingDriver] = React.useState<{ fullName: string; idNumber: string }>({ fullName: '', idNumber: '' });
   const [ehailingErrors, setEhailingErrors] = React.useState<{ fullName?: string; idNumber?: string }>({});
   const [rahmahApplied, setRahmahApplied] = React.useState(false);
   const [pendingAddonSync, setPendingAddonSync] = React.useState(false);
   const addonSyncTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const quoteUpdateGate = React.useRef(createQuoteUpdateGate());
 
-  const groupedAvVariants = React.useMemo(
-    () => groupAvVariantsBySumInsured(avVariants),
+  const avVariantNames = React.useMemo(
+    () => getUniqueAvVariantNames(avVariants),
     [avVariants],
   );
+
+  const avTiersForSelectedVariant = React.useMemo(() => {
+    if (!selectedAvVariantName) return [];
+    return getAvTiersForVariantName(avVariants, selectedAvVariantName);
+  }, [avVariants, selectedAvVariantName]);
+
+  const canGenerateQuote = React.useMemo(() => {
+    if (isReconditioned === null) return false;
+    if (siBasis === 'MV') return Boolean(selectedNvic);
+    return Boolean(selectedAvVariantName && selectedAvVariant);
+  }, [isReconditioned, siBasis, selectedNvic, selectedAvVariantName, selectedAvVariant]);
 
   React.useEffect(() => {
     if (isDemo) {
@@ -226,12 +256,18 @@ function ResultsPage() {
 
   const handleGenerateQuote = async () => {
     if (!formData || !vehicleDetails) return;
+    if (isReconditioned === null) {
+      setRecondError('Please select whether your vehicle is reconditioned.');
+      return;
+    }
+    setRecondError(null);
     const useAv = siBasis === 'AV' && selectedAvVariant;
     const useMv = siBasis === 'MV' && selectedNvic;
     if (!useAv && !useMv) return;
 
     setIsLoadingQuote(true);
     setError(null);
+    quoteUpdateGate.current.reset();
 
     try {
       let result: QuotationResponse;
@@ -242,6 +278,14 @@ function ResultsPage() {
       } else {
         const noOfClaims = sessionStorage.getItem('allianz_noOfClaims') || '0';
         const reconInd = isReconditioned ? 'Y' : 'N';
+        const nricBirthDate =
+          formData.identityType === 'NRIC'
+            ? birthDateFromNric(formData.nric, vehicleDetails.polEffectiveDate)
+            : null;
+        // TODO: confirm with Allianz what Age to send for passport / other ID / company customers.
+        const applicantAge = nricBirthDate
+          ? String(ageOnDate(nricBirthDate, vehicleDetails.polEffectiveDate))
+          : '30';
 
         try {
           const ubb2Result = await checkUBB({
@@ -250,7 +294,7 @@ function ResultsPage() {
             Policy: {
               PolicyEffectiveDate: vehicleDetails.polEffectiveDate,
               PolicyExpiryDate: vehicleDetails.polExpiryDate,
-              Client: { IdentificationNumber: formData.nric.replace(/-/g, ''), IdType: formData.identityType || 'NRIC', Age: '30' },
+              Client: { IdentificationNumber: formData.nric.replace(/-/g, ''), IdType: formData.identityType || 'NRIC', Age: applicantAge },
               RiskList: [{
                 RiskId: '1',
                 InsuredPerson: { IdentificationNumber: formData.nric.replace(/-/g, ''), IdType: formData.identityType || 'NRIC' },
@@ -349,7 +393,9 @@ function ResultsPage() {
 
       const preSelected = new Set<string>();
       result.additionalCover?.forEach((cover) => {
-        if (cover.selectedIndicator) preSelected.add(cover.coverCode);
+        if (cover.selectedIndicator && isCoverVisibleForDcAuto(cover)) {
+          preSelected.add(cover.coverCode);
+        }
       });
       setSelectedAddons(preSelected);
     } catch (err: unknown) {
@@ -389,10 +435,11 @@ function ResultsPage() {
       drivers: AdditionalDriverInfo[],
     ) => {
       if (!quotation || !vehicleDetails) return;
-      setIsUpdatingQuote(true);
       setPendingAddonSync(false);
-      try {
-        if (isDemo) {
+
+      if (isDemo) {
+        setIsUpdatingQuote(true);
+        try {
           await new Promise((r) => setTimeout(r, 350));
           const updated = applyDemoQuoteUpdate(
             quotation,
@@ -412,32 +459,44 @@ function ResultsPage() {
           } catch (syncErr) {
             console.warn('[demo] Quote premium sync failed:', syncErr);
           }
-          return;
+        } finally {
+          setIsUpdatingQuote(false);
         }
-        const additionalCover = buildAdditionalCoverPayload(
-          quotation.additionalCover,
-          selected,
-          inputs,
-        );
-        const updatedQuote = await updateQuote({
-          transactionType: 'NWOO',
-          contractNumber: quotation.contract.contractNumber,
-          effectiveDate: vehicleDetails.polEffectiveDate,
-          expirationDate: vehicleDetails.polExpiryDate,
-          ...(rahmahApplied ? { packageCode: RAHMAH_PACKAGE_CODE } : {}),
-          additionalCover,
-          unlimitedDriverInd: plan === 'unlimited',
-          driverDetails:
-            plan !== '0' && plan !== 'unlimited'
-              ? drivers.map((d) => ({ fullName: d.fullName, identityNumber: d.idNumber }))
-              : undefined,
-        });
+        return;
+      }
+
+      const payload = {
+        transactionType: 'NWOO' as const,
+        contractNumber: quotation.contract.contractNumber,
+        effectiveDate: vehicleDetails.polEffectiveDate,
+        expirationDate: vehicleDetails.polExpiryDate,
+        ...(rahmahApplied ? { packageCode: RAHMAH_PACKAGE_CODE } : {}),
+        additionalCover: buildAdditionalCoverPayload(quotation.additionalCover, selected, inputs),
+        unlimitedDriverInd: plan === 'unlimited',
+        driverDetails:
+          plan !== '0' && plan !== 'unlimited'
+            ? drivers.map((d) => ({ fullName: d.fullName, identityNumber: d.idNumber }))
+            : undefined,
+      };
+      const gate = quoteUpdateGate.current;
+      const ticket = gate.begin(JSON.stringify(payload));
+      if (ticket === null) return;
+
+      setIsUpdatingQuote(true);
+      try {
+        const updatedQuote = await updateQuote(payload);
+        gate.settle(ticket, true);
+        if (!gate.isCurrent(ticket)) return;
         setQuotation(updatedQuote);
         sessionStorage.setItem('allianz_quotation', JSON.stringify(updatedQuote));
       } catch (err) {
+        gate.settle(ticket, false);
+        if (!gate.isCurrent(ticket)) return;
         console.error('Update quotation error:', err);
+        const apiErr = err as { message?: string };
+        setError(apiErr?.message || 'Failed to update your quote. Please try again.');
       } finally {
-        setIsUpdatingQuote(false);
+        if (gate.isCurrent(ticket)) setIsUpdatingQuote(false);
       }
     },
     [quotation, vehicleDetails, rahmahApplied, isDemo],
@@ -495,19 +554,28 @@ function ResultsPage() {
   const handleAddonInputChange = (coverCode: string, field: string, value: string) => {
     setAddonInputs((prev) => {
       const next = { ...prev[coverCode] };
-      if (field === 'sumInsured') {
-        const raw = parseInt(value, 10) || 0;
-        next.sumInsured =
-          coverCode === '89'
-            ? clampWindscreenSumInsured(raw)
-            : coverCode === '97A'
-              ? clampGasKitSumInsured(raw)
-              : raw;
-      } else {
-        (next as Record<string, string>)[field] = value;
-      }
+      (next as Record<string, string>)[field] = value;
       return { ...prev, [coverCode]: next };
     });
+  };
+
+  const handleSumInsuredCommit = async (coverCode: string, rawValue: string) => {
+    const digits = rawValue.replace(/\D/g, '');
+    const raw = digits ? parseInt(digits, 10) : 0;
+    const committed =
+      coverCode === '89'
+        ? clampWindscreenSumInsured(Number.isFinite(raw) ? raw : 0)
+        : coverCode === '97A'
+          ? clampGasKitSumInsured(Number.isFinite(raw) ? raw : 0)
+          : raw;
+    const nextInputs = {
+      ...addonInputs,
+      [coverCode]: { ...addonInputs[coverCode], sumInsured: committed },
+    };
+    setAddonInputs(nextInputs);
+    if (quotation && selectedAddons.has(coverCode)) {
+      await runQuoteUpdate(selectedAddons, nextInputs, driverPlan, additionalDrivers);
+    }
   };
 
   const handleDriverPlanChange = async (plan: '0' | '1' | '2' | 'unlimited') => {
@@ -527,8 +595,63 @@ function ResultsPage() {
     }
   };
 
-  const updateDriverInfo = (index: number, field: keyof AdditionalDriverInfo, value: string) => {
-    setAdditionalDrivers((prev) => prev.map((d, i) => i === index ? { ...d, [field]: value } : d));
+  const updateDriverInfo = (
+    index: number,
+    field: keyof AdditionalDriverFormValues,
+    value: string,
+  ) => {
+    setAdditionalDrivers((prev) =>
+      prev.map((d, i) => {
+        if (i !== index) return d;
+        if (field === 'idType') {
+          const idNumber = reformatDriverIdForTypeChange(value, d.idNumber);
+          return { ...d, idType: value, idNumber };
+        }
+        return { ...d, [field]: value };
+      }),
+    );
+    if (field === 'idType') {
+      const driver = additionalDrivers[index];
+      if (driver) {
+        const idNumber = reformatDriverIdForTypeChange(value, driver.idNumber);
+        const errors = validateNamedDriverFields({
+          ...driver,
+          idType: value,
+          idNumber,
+        });
+        setAdditionalDriverErrors((prev) => ({ ...prev, [index]: errors }));
+      }
+      return;
+    }
+    setAdditionalDriverErrors((prev) => {
+      const row = prev[index];
+      if (!row) return prev;
+      const key = field === 'fullName' ? 'fullName' : field === 'idNumber' ? 'idNumber' : null;
+      if (!key || !row[key]) return prev;
+      return { ...prev, [index]: { ...row, [key]: undefined } };
+    });
+  };
+
+  const validateAdditionalDriverRow = (index: number) => {
+    const driver = additionalDrivers[index];
+    if (!driver) return {};
+    const errors = validateNamedDriverFields(driver);
+    setAdditionalDriverErrors((prev) => ({ ...prev, [index]: errors }));
+    return errors;
+  };
+
+  const validateAllAdditionalDrivers = () => {
+    const next: Record<number, { fullName?: string; idNumber?: string }> = {};
+    let hasError = false;
+    additionalDrivers.forEach((driver, index) => {
+      const errors = validateNamedDriverFields(driver);
+      if (Object.keys(errors).length > 0) {
+        next[index] = errors;
+        hasError = true;
+      }
+    });
+    setAdditionalDriverErrors(next);
+    return !hasError;
   };
 
   const handleEhailingChange = (driver: { fullName: string; idNumber: string }) => {
@@ -556,6 +679,9 @@ function ResultsPage() {
       if (validation.ehailingErrors) {
         setEhailingErrors(validation.ehailingErrors);
       }
+      if (validation.focusTarget === 'additionalDrivers') {
+        validateAllAdditionalDrivers();
+      }
       if (validation.focusTarget === 'ehailing') {
         requestAnimationFrame(() => {
           document.getElementById('ehailing-driver-section')?.scrollIntoView({
@@ -576,6 +702,7 @@ function ResultsPage() {
 
     setError(null);
     setEhailingErrors({});
+    setAdditionalDriverErrors({});
     if (isDemo) {
       sessionStorage.setItem('allianz_isDemo', 'true');
     } else {
@@ -591,9 +718,26 @@ function ResultsPage() {
     router.push('/customer-details');
   };
 
+  const selectedCoverBreakdown = React.useMemo(() => {
+    if (!quotation) return [];
+    return quotation.additionalCover.filter(
+      (c) => selectedAddons.has(c.coverCode) && isCoverVisibleForDcAuto(c),
+    );
+  }, [quotation, selectedAddons]);
+
+  const premiumBusy = isUpdatingQuote || pendingAddonSync;
+
+  const handleBackToVehicleDetails = () => {
+    restoreInsuranceFormDraftFromSubmitted();
+    if (isDemo) {
+      sessionStorage.setItem(ALLIANZ_IS_DEMO_KEY, 'true');
+    }
+    router.push(vehicleDetailsPagePath({ demo: isDemo }));
+  };
+
   if (!formData && !isDemo) return null;
 
-  const visibleCovers = quotation?.additionalCover?.filter((c) => !isCoverHidden(c)) || [];
+  const visibleCovers = quotation?.additionalCover?.filter((c) => isCoverVisibleForDcAuto(c)) || [];
 
   const currentSumInsured = siBasis === 'AV' && selectedAvVariant
     ? parseFloat(selectedAvVariant.SumInsured)
@@ -676,9 +820,35 @@ function ResultsPage() {
             </div>
           )}
 
-          {/* SI Basis & Reconditioned */}
+          {/* Reconditioned, SI basis & AV selection (pre-quote) */}
           {vehicleDetails && !quotation && (
             <div className="max-w-2xl mx-auto space-y-4">
+              <div className="bg-amber-50 border border-amber-200/80 rounded-xl p-3 relative">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <p className="text-xs font-medium text-amber-900">Is your vehicle reconditioned? *</p>
+                  <button type="button" onClick={() => setShowRecondTooltip(!showRecondTooltip)} className="text-amber-700 hover:text-amber-900"><HelpCircle className="w-3.5 h-3.5" /></button>
+                </div>
+                {showRecondTooltip && (
+                  <div className="mb-3 bg-white border border-amber-200 rounded-lg p-3 text-xs space-y-2">
+                    <p className="font-semibold text-amber-900">What is considered a reconditioned car?</p>
+                    <table className="w-full text-left">
+                      <thead><tr className="border-b border-amber-200"><th className="pb-1 text-amber-800">Point of Purchase</th><th className="pb-1 text-amber-800">Status</th></tr></thead>
+                      <tbody className="text-amber-700">
+                        <tr><td className="py-1">New Import (Import Baru)</td><td>Not Reconditioned</td></tr>
+                        <tr><td className="py-1">Used Import (Import Terpakai)</td><td className="font-medium text-amber-900">Reconditioned</td></tr>
+                        <tr><td className="py-1">Locally Assembled (Pemasangan Tempatan)</td><td>Not Reconditioned</td></tr>
+                      </tbody>
+                    </table>
+                    <p className="text-amber-600">Check your Vehicle Registration Card or Vehicle Ownership Certificate under &quot;Status Asal&quot; to determine if your vehicle is reconditioned.</p>
+                  </div>
+                )}
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="radio" name="reconditioned" checked={isReconditioned === false} onChange={() => { setIsReconditioned(false); setRecondError(null); }} className="text-primary" /><span>No</span></label>
+                  <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="radio" name="reconditioned" checked={isReconditioned === true} onChange={() => { setIsReconditioned(true); setRecondError(null); }} className="text-primary" /><span>Yes</span></label>
+                </div>
+                {recondError && <p className="text-xs text-destructive mt-2">{recondError}</p>}
+              </div>
+
               {avAvailable && !isLoadingAv && (
                 <div className="space-y-3">
                   <div className="text-center">
@@ -686,60 +856,70 @@ function ResultsPage() {
                     <p className="text-xs text-muted-foreground mt-0.5">Choose how your vehicle is valued for coverage.</p>
                   </div>
                   <div className="flex justify-center gap-2">
-                    <button onClick={() => { setSiBasis('MV'); setQuotation(null); }} className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors ${siBasis === 'MV' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}>Market Value</button>
-                    <button onClick={() => { setSiBasis('AV'); setQuotation(null); }} className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors ${siBasis === 'AV' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}>Agreed Value</button>
-                  </div>
-
-                  {/* Reconditioned declaration with tooltip */}
-                  <div className="bg-amber-50 border border-amber-200/80 rounded-xl p-3 relative">
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <p className="text-xs font-medium text-amber-900">Is your vehicle reconditioned?</p>
-                      <button type="button" onClick={() => setShowRecondTooltip(!showRecondTooltip)} className="text-amber-700 hover:text-amber-900"><HelpCircle className="w-3.5 h-3.5" /></button>
-                    </div>
-                    {showRecondTooltip && (
-                      <div className="mb-3 bg-white border border-amber-200 rounded-lg p-3 text-xs space-y-2">
-                        <p className="font-semibold text-amber-900">What is considered a reconditioned car?</p>
-                        <table className="w-full text-left">
-                          <thead><tr className="border-b border-amber-200"><th className="pb-1 text-amber-800">Point of Purchase</th><th className="pb-1 text-amber-800">Status</th></tr></thead>
-                          <tbody className="text-amber-700">
-                            <tr><td className="py-1">New Import (Import Baru)</td><td>Not Reconditioned</td></tr>
-                            <tr><td className="py-1">Used Import (Import Terpakai)</td><td className="font-medium text-amber-900">Reconditioned</td></tr>
-                            <tr><td className="py-1">Locally Assembled (Pemasangan Tempatan)</td><td>Not Reconditioned</td></tr>
-                          </tbody>
-                        </table>
-                        <p className="text-amber-600">Check your Vehicle Registration Card or Vehicle Ownership Certificate under &quot;Status Asal&quot; to determine if your vehicle is reconditioned.</p>
-                      </div>
-                    )}
-                    <div className="flex gap-4">
-                      <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="radio" name="reconditioned" checked={isReconditioned === false} onChange={() => setIsReconditioned(false)} className="text-primary" /><span>No</span></label>
-                      <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="radio" name="reconditioned" checked={isReconditioned === true} onChange={() => setIsReconditioned(true)} className="text-primary" /><span>Yes</span></label>
-                    </div>
+                    <button onClick={() => { setSiBasis('MV'); setQuotation(null); setSelectedAvVariantName(null); setSelectedAvVariant(null); }} className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors ${siBasis === 'MV' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}>Market Value</button>
+                    <button onClick={() => { setSiBasis('AV'); setQuotation(null); setSelectedAvVariantName(null); setSelectedAvVariant(null); }} className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors ${siBasis === 'AV' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}>Agreed Value</button>
                   </div>
                 </div>
               )}
 
-              {/* AV Variant Selection */}
               {siBasis === 'AV' && avVariants.length > 0 && (
-                <div className="space-y-3">
-                  <div className="text-center space-y-1">
-                    <h3 className="font-semibold text-base">Select agreed value variant</h3>
-                    <p className="text-xs text-muted-foreground">Choose the variant and sum insured.</p>
+                <div className="space-y-4">
+                  <div className="space-y-3">
+                    <div className="text-center space-y-1">
+                      <h3 className="font-semibold text-base">Step 1: Which variant do you own?</h3>
+                      <p className="text-xs text-muted-foreground">Select the variant that matches your vehicle grant.</p>
+                    </div>
+                    <div className="space-y-2">
+                      {avVariantNames.map((name) => (
+                        <button
+                          key={name}
+                          type="button"
+                          onClick={() => {
+                            setSelectedAvVariantName(name);
+                            setSelectedAvVariant(null);
+                          }}
+                          className={`w-full text-left p-3.5 rounded-xl border-2 transition-all duration-300 ${selectedAvVariantName === name ? 'border-primary bg-primary/5 shadow-md shadow-primary/5' : 'border-border/40 hover:border-primary/30 hover:shadow-sm'}`}
+                        >
+                          <p className="font-medium text-sm">{name}</p>
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    {groupedAvVariants.map((av, idx) => (
-                      <button key={av.AvCode} onClick={() => setSelectedAvVariant(av)} className={`w-full text-left p-3.5 rounded-xl border-2 transition-all duration-300 ${selectedAvVariant?.AvCode === av.AvCode ? 'border-primary bg-primary/5 shadow-md shadow-primary/5' : 'border-border/40 hover:border-primary/30 hover:shadow-sm'}`}>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium text-sm">{avTierLabel(idx, groupedAvVariants.length)} — {av.Variant}</p>
-                            <p className="text-xs text-muted-foreground">{av.VehicleEngineCC} CC | {av.MakeYear}</p>
-                          </div>
-                          <div className="text-right"><p className="font-bold text-base">RM {parseFloat(av.SumInsured).toLocaleString('en-MY')}</p><p className="text-[10px] text-muted-foreground uppercase">Sum Insured</p></div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
+
+                  {selectedAvVariantName && avTiersForSelectedVariant.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="text-center space-y-1">
+                        <h3 className="font-semibold text-base">Step 2: Choose sum insured tier</h3>
+                        <p className="text-xs text-muted-foreground">Low, Med, or High agreed value for your selected variant.</p>
+                      </div>
+                      <div className="space-y-2">
+                        {avTiersForSelectedVariant.map((av, idx) => (
+                          <button
+                            key={av.AvCode}
+                            type="button"
+                            onClick={() => setSelectedAvVariant(av)}
+                            className={`w-full text-left p-3.5 rounded-xl border-2 transition-all duration-300 ${selectedAvVariant?.AvCode === av.AvCode ? 'border-primary bg-primary/5 shadow-md shadow-primary/5' : 'border-border/40 hover:border-primary/30 hover:shadow-sm'}`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="font-medium text-sm">
+                                  {avTierLabel(idx, avTiersForSelectedVariant.length, av.SumInsured)}
+                                </p>
+                                <p className="text-xs text-muted-foreground">{av.VehicleEngineCC} CC | {av.MakeYear}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-bold text-base">RM {parseFloat(av.SumInsured).toLocaleString('en-MY')}</p>
+                                <p className="text-[10px] text-muted-foreground uppercase">Sum Insured</p>
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="text-center pt-2">
-                    <Button onClick={handleGenerateQuote} disabled={!selectedAvVariant || isLoadingQuote} className="h-12 px-8 text-base font-semibold">
+                    <Button onClick={handleGenerateQuote} disabled={!canGenerateQuote || isLoadingQuote} className="h-12 px-8 text-base font-semibold">
                       {isLoadingQuote ? <div className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /><span>Calculating...</span></div> : 'Get my quote'}
                     </Button>
                   </div>
@@ -775,7 +955,7 @@ function ResultsPage() {
               </div>
               <div className="flex items-start gap-2 px-3 py-2.5 bg-muted/50 rounded-lg"><Info className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" /><p className="text-xs text-muted-foreground leading-relaxed">Not sure which variant? Check your vehicle registration card (grant) or previous insurance policy.</p></div>
               <div className="text-center pt-2">
-                <Button onClick={handleGenerateQuote} disabled={!selectedNvic || isLoadingQuote} className="h-12 px-8 text-base font-semibold">
+                <Button onClick={handleGenerateQuote} disabled={!canGenerateQuote || isLoadingQuote} className="h-12 px-8 text-base font-semibold">
                   {isLoadingQuote ? <div className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /><span>Calculating...</span></div> : 'Get my quote'}
                 </Button>
               </div>
@@ -785,11 +965,6 @@ function ResultsPage() {
           {/* ═══ Quotation Display ═══ */}
           {quotation && (
             <div className="max-w-3xl mx-auto space-y-6">
-              {rahmahApplied && (
-                <div className="max-w-lg mx-auto rounded-xl border border-green-200 bg-green-50/60 px-4 py-3 text-center text-sm text-green-900">
-                  Rahmah package applied for eligible vehicles (sum insured ≤ RM 30,000 and engine ≤ 1,500 CC).
-                </div>
-              )}
 
               {/* Total Premium */}
               <div className="text-center py-10 bg-gradient-to-b from-muted/20 to-muted/40 rounded-2xl border border-border/30 shadow-sm">
@@ -800,15 +975,32 @@ function ResultsPage() {
               </div>
 
               {/* Premium Breakdown */}
-              <Card className="border-border/40 shadow-sm">
-                <CardHeader><CardTitle className="flex items-center text-sm font-semibold"><Shield className="w-4 h-4 mr-2 text-primary" />Premium breakdown</CardTitle></CardHeader>
+              <Card className={`border-border/40 shadow-sm ${premiumBusy ? 'opacity-80' : ''}`}>
+                <CardHeader><CardTitle className="flex items-center text-sm font-semibold"><Shield className="w-4 h-4 mr-2 text-primary" />Premium breakdown{premiumBusy ? ' (updating…)' : ''}</CardTitle></CardHeader>
                 <CardContent className="space-y-2">
                   <div className="flex justify-between text-sm"><span className="text-muted-foreground">Basic Premium</span><span>RM {quotation.premium.basicPremium.toFixed(2)}</span></div>
                   <div className="flex justify-between text-sm text-green-600"><span>NCD Discount ({quotation.premium.ncdPct}%)</span><span>- RM {quotation.premium.ncdAmt.toFixed(2)}</span></div>
                   <div className="flex justify-between text-sm"><span className="text-muted-foreground">Annual Premium</span><span>RM {quotation.premium.annualPremium.toFixed(2)}</span></div>
+                  {selectedCoverBreakdown.map((cover) => (
+                    <div key={cover.coverCode} className="flex justify-between text-sm pl-2">
+                      <span className="text-muted-foreground truncate pr-2">{cover.coverName}</span>
+                      <span className="flex-shrink-0">+ RM {cover.displayPremium.toFixed(2)}</span>
+                    </div>
+                  ))}
+                  {driverPlanCost > 0 && (
+                    <div className="flex justify-between text-sm pl-2">
+                      <span className="text-muted-foreground">Additional driver plan</span>
+                      <span>+ RM {driverPlanCost.toFixed(2)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-sm"><span className="text-muted-foreground">Service Tax ({quotation.premium.serviceTaxPercentage}%)</span><span>RM {quotation.premium.serviceTaxAmount.toFixed(2)}</span></div>
                   <div className="flex justify-between text-sm"><span className="text-muted-foreground">Stamp Duty</span><span>RM {quotation.premium.stampDuty.toFixed(2)}</span></div>
-                  {addonsTotal > 0 && <div className="flex justify-between text-sm"><span className="text-muted-foreground">Selected Add-ons</span><span>+ RM {addonsTotal.toFixed(2)}</span></div>}
+                  {(quotation.premium.packagePremium ?? 0) !== 0 && (
+                    <div className="flex justify-between text-sm text-green-600">
+                      <span>Package adjustment</span>
+                      <span>RM {(quotation.premium.packagePremium ?? 0).toFixed(2)}</span>
+                    </div>
+                  )}
                   <div className="pt-3 border-t border-border/40 flex justify-between items-center"><span className="font-bold text-sm">Total</span><span className="font-bold text-lg text-primary">RM {totalWithAddons.toFixed(2)}</span></div>
                   <p className="text-[11px] text-muted-foreground italic mt-2">* Excess of RM {quotation.premium.excessAmount.toFixed(0)} is applicable</p>
                   {quotation.premium.commissionPercentage > 0 && (
@@ -837,6 +1029,23 @@ function ResultsPage() {
                     <span className="font-semibold text-sm text-green-600">FREE</span>
                   </div>
                 </div>
+                {rahmahApplied && (
+                  <div className="p-4 rounded-xl border-2 border-green-200 bg-green-50/50">
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0 w-5 h-5 rounded bg-green-500 flex items-center justify-center mt-0.5"><Check className="w-3 h-3 text-white" /></div>
+                      <div className="flex-1">
+                        <span className="font-medium text-sm">Rahmah package</span>
+                        <p className="text-xs text-muted-foreground mt-0.5">Coverage provided at no extra cost for eligible vehicles (sum insured ≤ RM 30,000 and engine ≤ 1,500 CC).</p>
+                        <ul className="mt-2 space-y-1 text-xs text-muted-foreground list-disc list-inside">
+                          {RAHMAH_INCLUSIONS.map((line) => (
+                            <li key={line}>{line}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <span className="font-semibold text-sm text-green-600">FREE</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* ═══ Additional Drivers (custom add-on) ═══ */}
@@ -865,13 +1074,13 @@ function ResultsPage() {
                 {(driverPlan === '1' || driverPlan === '2') && additionalDrivers.map((driver, idx) => (
                   <Card key={idx} className="border-border/40 shadow-sm">
                     <CardHeader className="pb-2"><CardTitle className="text-xs font-semibold text-muted-foreground">Additional Driver {idx + 1}</CardTitle></CardHeader>
-                    <CardContent className="space-y-3">
-                      <div><label className="text-xs font-medium">Name as per ID *</label><input value={driver.fullName} onChange={(e) => updateDriverInfo(idx, 'fullName', e.target.value.toUpperCase())} className="mt-1 w-full rounded-lg border border-input px-3 py-2 text-sm uppercase" placeholder="FULL NAME" /></div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div><label className="text-xs font-medium">Nationality *</label><select value={driver.nationality} onChange={(e) => updateDriverInfo(idx, 'nationality', e.target.value)} className="mt-1 w-full rounded-lg border border-input px-3 py-2 text-sm">{NATIONALITY_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}</select></div>
-                        <div><label className="text-xs font-medium">ID Type *</label><select value={driver.idType} onChange={(e) => updateDriverInfo(idx, 'idType', e.target.value)} className="mt-1 w-full rounded-lg border border-input px-3 py-2 text-sm"><option value="NRIC">NRIC</option><option value="OLD_IC">Old IC</option><option value="PASS">Passport</option></select></div>
-                      </div>
-                      <div><label className="text-xs font-medium">ID Number *</label><input value={driver.idNumber} onChange={(e) => updateDriverInfo(idx, 'idNumber', e.target.value)} className="mt-1 w-full rounded-lg border border-input px-3 py-2 text-sm" placeholder="ID Number" /></div>
+                    <CardContent>
+                      <AdditionalDriverFormFields
+                        driver={driver}
+                        fieldErrors={additionalDriverErrors[idx]}
+                        onFieldChange={(field, value) => updateDriverInfo(idx, field, value)}
+                        onFieldBlur={() => validateAdditionalDriverRow(idx)}
+                      />
                     </CardContent>
                   </Card>
                 ))}
@@ -886,6 +1095,7 @@ function ResultsPage() {
                   onToggleAddon={handleToggleAddon}
                   addonInputs={addonInputs}
                   onInputChange={handleAddonInputChange}
+                  onSumInsuredCommit={handleSumInsuredCommit}
                   ehailingDriver={ehailingDriver}
                   onEhailingChange={handleEhailingChange}
                   ehailingErrors={ehailingErrors}
@@ -898,7 +1108,7 @@ function ResultsPage() {
               {/* Actions */}
               <div className="sticky bottom-0 bg-background/95 backdrop-blur-md border-t border-border/30 -mx-5 px-5 py-4 sm:relative sm:border-0 sm:bg-transparent sm:backdrop-blur-none sm:mx-0 sm:px-0 sm:py-0 shadow-[0_-4px_12px_rgba(0,0,0,0.04)] sm:shadow-none">
                 <div className="flex flex-col sm:flex-row gap-3 justify-center items-center max-w-lg mx-auto">
-                  <Button variant="outline" onClick={() => { setQuotation(null); setSelectedNvic(null); }} className="w-full sm:w-auto h-11"><ArrowLeft className="w-4 h-4 mr-2" />Change variant</Button>
+                  <Button variant="outline" onClick={handleBackToVehicleDetails} className="w-full sm:w-auto h-11"><ArrowLeft className="w-4 h-4 mr-2" />Back to vehicle details</Button>
                   <Button
                     onClick={handleProceedToPayment}
                     disabled={!quotation || isUpdatingQuote || pendingAddonSync}
@@ -916,7 +1126,7 @@ function ResultsPage() {
           {!vehicleDetails && formData && (
             <div className="text-center space-y-4">
               <p className="text-sm text-muted-foreground">No vehicle details available. The backend may not be running.</p>
-              <Button variant="outline" onClick={() => router.push('/')}><ArrowLeft className="w-4 h-4 mr-2" />Back to form</Button>
+              <Button variant="outline" onClick={handleBackToVehicleDetails}><ArrowLeft className="w-4 h-4 mr-2" />Back to vehicle details</Button>
             </div>
           )}
         </div>

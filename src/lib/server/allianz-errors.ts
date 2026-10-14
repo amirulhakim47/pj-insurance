@@ -47,6 +47,20 @@ export function extractAllianzErrors(data: unknown): string[] {
   return [];
 }
 
+/** Dotted paths of empty-string / null / undefined leaves; values are never returned (PII). */
+export function findEmptyRequestFields(value: unknown, path = ''): string[] {
+  if (value === undefined || value === null || value === '') return path ? [path] : [];
+  if (Array.isArray(value)) {
+    return value.flatMap((item, i) => findEmptyRequestFields(item, `${path}[${i}]`));
+  }
+  if (typeof value === 'object') {
+    return Object.entries(value as Record<string, unknown>).flatMap(([key, child]) =>
+      findEmptyRequestFields(child, path ? `${path}.${key}` : key),
+    );
+  }
+  return [];
+}
+
 /** Map Allianz vehicleDetails business errors to user-safe copy. */
 export function mapVehicleDetailsError(
   allianzErrors: string[],
@@ -68,6 +82,13 @@ export function mapVehicleDetailsError(
       userMessage: plate
         ? vehicleDataNotFoundWithGuidance(plate, guidance)
         : guidance,
+    };
+  }
+
+  if (blob.includes('ncd confirmation')) {
+    return {
+      code: 'NCD_CONFIRMATION_UNAVAILABLE',
+      userMessage: allianzErrors.join('; '),
     };
   }
 

@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   insuranceFormSchema,
+  sanitizePersonNameInput,
   type InsuranceFormData,
   identityNumberLabel,
 } from '@/lib/validations';
@@ -18,9 +19,15 @@ import { RadioField, TextField, PlateNumberField, IdentityNumberField } from '@/
 import { DataProtectionCard } from '@/components/ui/data-protection-card';
 import { PDPAConsent } from '@/components/ui/pdpa-consent';
 import { vehicleTypeOptions, customerTypeOptions } from '@/data/mockUserData';
+import { MOTORCYCLE_JOURNEY_ENABLED } from '@/config/product';
 import { Car, Bike, ArrowRight, ArrowLeft } from 'lucide-react';
 
-const FORM_DRAFT_KEY = 'insuranceFormDraft';
+import {
+  INSURANCE_FORM_DATA_KEY,
+  INSURANCE_FORM_DRAFT_KEY,
+} from '@/lib/insurance-session';
+
+const FORM_DRAFT_KEY = INSURANCE_FORM_DRAFT_KEY;
 
 const steps = ['Details', 'Loading', 'Results'];
 
@@ -68,6 +75,7 @@ export default function InsuranceForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const draftPersistReady = React.useRef(false);
 
   const {
     handleSubmit,
@@ -80,6 +88,7 @@ export default function InsuranceForm() {
     resolver: zodResolver(insuranceFormSchema),
     mode: 'onChange',
     defaultValues: {
+      vehicleType: 'car',
       identityType: 'NRIC',
       customerType: 'individual',
       gender: undefined,
@@ -97,22 +106,38 @@ export default function InsuranceForm() {
   const nricValue = watch('nric');
 
   React.useEffect(() => {
-    const draft = sessionStorage.getItem(FORM_DRAFT_KEY);
-    if (draft) {
+    const hydrate = (raw: string) => {
       try {
-        reset(JSON.parse(draft) as InsuranceFormData);
+        const parsed = JSON.parse(raw) as InsuranceFormData;
+        if (!MOTORCYCLE_JOURNEY_ENABLED && parsed.vehicleType === 'motorcycle') {
+          parsed.vehicleType = 'car';
+        }
+        reset(parsed);
+        return true;
       } catch {
-        /* ignore corrupt draft */
+        return false;
       }
+    };
+
+    const draft = sessionStorage.getItem(FORM_DRAFT_KEY);
+    if (draft && hydrate(draft)) {
+      /* draft restored */
+    } else {
+      const submitted = sessionStorage.getItem(INSURANCE_FORM_DATA_KEY);
+      if (submitted) hydrate(submitted);
     }
+
     const plate = searchParams.get('plate');
     if (plate) {
       setValue('plateNumber', plate.toUpperCase(), { shouldValidate: true });
     }
+
+    draftPersistReady.current = true;
   }, [searchParams, setValue, reset]);
 
   const watched = watch();
   React.useEffect(() => {
+    if (!draftPersistReady.current) return;
     sessionStorage.setItem(FORM_DRAFT_KEY, JSON.stringify(watched));
   }, [watched]);
 
@@ -139,7 +164,7 @@ export default function InsuranceForm() {
   const onSubmit = async (data: InsuranceFormData) => {
     setIsSubmitting(true);
     try {
-      sessionStorage.setItem('insuranceFormData', JSON.stringify(data));
+      sessionStorage.setItem(INSURANCE_FORM_DATA_KEY, JSON.stringify(data));
       sessionStorage.removeItem(FORM_DRAFT_KEY);
       router.push('/loading');
     } catch (error) {
@@ -222,11 +247,13 @@ export default function InsuranceForm() {
                   <TextField
                     label="Full Name"
                     value={field.value || ''}
-                    onChange={(e) => field.onChange(e.target.value)}
+                    onChange={(e) => field.onChange(sanitizePersonNameInput(e.target.value))}
                     error={errors.fullName?.message}
                     required
                     placeholder="ENTER YOUR FULL NAME"
                     type="text"
+                    maxLength={100}
+                    autoComplete="name"
                   />
                 )}
               />
@@ -235,30 +262,41 @@ export default function InsuranceForm() {
                 name="vehicleType"
                 control={control}
                 render={({ field }) => (
-                  <RadioField
-                    label="Vehicle Type"
-                    name="vehicleType"
-                    options={vehicleTypeOptions.map((option) => ({
-                      value: option.value,
-                      label: (
-                        <div className="flex items-center gap-3">
-                          {option.value === 'car' ? (
-                            <Car className="w-4 h-4 text-primary" />
-                          ) : (
-                            <Bike className="w-4 h-4 text-primary" />
-                          )}
-                          <div>
-                            <div className="font-medium text-sm">{option.label}</div>
-                            <div className="text-xs text-muted-foreground">{option.description}</div>
+                  <div className="space-y-2">
+                    <RadioField
+                      label="Vehicle Type"
+                      name="vehicleType"
+                      options={vehicleTypeOptions.map((option) => ({
+                        value: option.value,
+                        disabled:
+                          !MOTORCYCLE_JOURNEY_ENABLED && option.value === 'motorcycle',
+                        label: (
+                          <div className="flex items-center gap-3">
+                            {option.value === 'car' ? (
+                              <Car className="w-4 h-4 text-primary" />
+                            ) : (
+                              <Bike className="w-4 h-4 text-muted-foreground" />
+                            )}
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="font-medium text-sm">{option.label}</span>
+                                {!MOTORCYCLE_JOURNEY_ENABLED && option.value === 'motorcycle' && (
+                                  <span className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                                    Coming soon
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-xs text-muted-foreground">{option.description}</div>
+                            </div>
                           </div>
-                        </div>
-                      ),
-                    }))}
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    error={errors.vehicleType?.message}
-                    required
-                  />
+                        ),
+                      }))}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      error={errors.vehicleType?.message}
+                      required
+                    />
+                  </div>
                 )}
               />
 

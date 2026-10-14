@@ -21,6 +21,28 @@ export function clampGasKitSumInsured(value: number): number {
   return Math.min(GAS_KIT_MAX_SI, Math.floor(value));
 }
 
+/** Strip formatting; used only for commit/clamp (never store formatted strings as SI). */
+export function parseSumInsuredDigits(input: string): number {
+  const digits = input.replace(/\D/g, '');
+  if (!digits) return 0;
+  const n = parseInt(digits, 10);
+  return Number.isFinite(n) ? n : 0;
+}
+
+export function formatSumInsuredThousands(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) return '';
+  return Math.floor(value).toLocaleString('en-MY');
+}
+
+/** Apply thousand separators while the user types (digits-only semantics). */
+export function formatSumInsuredInputTyping(input: string): string {
+  const digits = input.replace(/\D/g, '');
+  if (!digits) return '';
+  const n = parseInt(digits, 10);
+  if (!Number.isFinite(n)) return '';
+  return n.toLocaleString('en-MY');
+}
+
 export function defaultAddonInputsForCover(cover: AdditionalCoverItem): AddonInputState {
   switch (cover.coverCode) {
     case '89':
@@ -89,10 +111,42 @@ export function groupAvVariantsBySumInsured<T extends { SumInsured: string; Vari
   );
 }
 
-export function avTierLabel(index: number, total: number): string {
+export function avTierLabel(index: number, total: number, sumInsured?: string): string {
   if (total <= 1) return 'Agreed value';
-  if (total === 2) return index === 0 ? 'Lower tier' : 'Higher tier';
-  if (index === 0) return 'Low';
-  if (index === total - 1) return 'High';
-  return 'Medium';
+  if (total === 2) return index === 0 ? 'Low' : 'High';
+  if (total === 3) {
+    if (index === 0) return 'Low';
+    if (index === 1) return 'Med';
+    return 'High';
+  }
+  if (sumInsured) {
+    const si = parseFloat(sumInsured);
+    if (Number.isFinite(si)) {
+      return `RM ${si.toLocaleString('en-MY', { maximumFractionDigits: 0 })}`;
+    }
+  }
+  return `Tier ${index + 1}`;
+}
+
+/** Step 1: distinct variant descriptions from AV LOV. */
+export function getUniqueAvVariantNames<T extends { Variant: string }>(variants: T[]): string[] {
+  const seen = new Set<string>();
+  const names: string[] = [];
+  for (const v of variants) {
+    const key = v.Variant.trim();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    names.push(key);
+  }
+  return names.sort((a, b) => a.localeCompare(b));
+}
+
+/** Step 2: sum-insured tiers for one variant (deduped by SI). */
+export function getAvTiersForVariantName<T extends { Variant: string; SumInsured: string }>(
+  variants: T[],
+  variantName: string,
+): T[] {
+  const trimmed = variantName.trim();
+  const rows = variants.filter((v) => v.Variant.trim() === trimmed);
+  return groupAvVariantsBySumInsured(rows);
 }

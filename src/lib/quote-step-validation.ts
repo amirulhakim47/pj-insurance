@@ -1,15 +1,11 @@
-const PERSON_NAME_REGEX = /^[\p{L}\s'.@/-]+$/u;
-const ID_NUMBER_REGEX = /^[A-Za-z0-9-]{4,20}$/;
+import { validateNamedDriverFields, type NamedDriverFields } from '@/lib/validations';
 
 export interface EhailingDriverInput {
   fullName: string;
   idNumber: string;
 }
 
-export interface AdditionalDriverInput {
-  fullName: string;
-  idNumber: string;
-}
+export interface AdditionalDriverInput extends NamedDriverFields {}
 
 export type QuotationStepFocusTarget = 'ehailing' | 'additionalDrivers';
 
@@ -22,28 +18,18 @@ export type QuotationStepValidationResult =
       ehailingErrors?: { fullName?: string; idNumber?: string };
     };
 
+/** Optional fields when e-Hailing add-on is selected (UAT: not required). */
 export function validateEhailingDriver(
   driver: EhailingDriverInput,
 ): { fullName?: string; idNumber?: string } {
-  const errors: { fullName?: string; idNumber?: string } = {};
   const name = driver.fullName.trim();
-  const id = driver.idNumber.trim().replace(/\s/g, '');
-
-  if (!name) {
-    errors.fullName = 'Driver name is required';
-  } else if (name.length < 2) {
-    errors.fullName = 'Enter at least 2 characters';
-  } else if (!PERSON_NAME_REGEX.test(name)) {
-    errors.fullName = 'Name must not contain invalid characters';
-  }
-
-  if (!id) {
-    errors.idNumber = 'ID number is required';
-  } else if (!ID_NUMBER_REGEX.test(id)) {
-    errors.idNumber = 'Enter a valid ID (4–20 letters or numbers)';
-  }
-
-  return errors;
+  const id = driver.idNumber.trim();
+  if (!name && !id) return {};
+  return validateNamedDriverFields({
+    fullName: name,
+    idType: 'NRIC',
+    idNumber: id,
+  });
 }
 
 export function validateQuotationStepBeforeProceed(params: {
@@ -61,36 +47,21 @@ export function validateQuotationStepBeforeProceed(params: {
     };
   }
 
-  const selected = params.selectedAddons instanceof Set
-    ? params.selectedAddons
-    : new Set(params.selectedAddons);
-
-  if (selected.has('A202')) {
-    const ehailingErrors = validateEhailingDriver(params.ehailingDriver);
-    if (Object.keys(ehailingErrors).length > 0) {
-      return {
-        ok: false,
-        message: 'Complete the e-Hailing driver details before continuing.',
-        focusTarget: 'ehailing',
-        ehailingErrors,
-      };
-    }
-  }
-
   if (params.driverPlan === '1' || params.driverPlan === '2') {
     for (let i = 0; i < params.additionalDrivers.length; i++) {
       const d = params.additionalDrivers[i];
-      if (!d.fullName.trim()) {
+      const fieldErrors = validateNamedDriverFields(d);
+      if (fieldErrors.fullName) {
         return {
           ok: false,
-          message: `Additional driver ${i + 1}: name is required.`,
+          message: `Additional driver ${i + 1}: ${fieldErrors.fullName}`,
           focusTarget: 'additionalDrivers',
         };
       }
-      if (!d.idNumber.trim()) {
+      if (fieldErrors.idNumber) {
         return {
           ok: false,
-          message: `Additional driver ${i + 1}: ID number is required.`,
+          message: `Additional driver ${i + 1}: ${fieldErrors.idNumber}`,
           focusTarget: 'additionalDrivers',
         };
       }

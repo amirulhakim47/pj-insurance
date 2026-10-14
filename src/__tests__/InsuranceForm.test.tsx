@@ -51,6 +51,7 @@ describe('InsuranceForm', () => {
 
     expect(screen.getByText('Car')).toBeInTheDocument()
     expect(screen.getByText('Motorcycle')).toBeInTheDocument()
+    expect(screen.getAllByText(/coming soon/i).length).toBeGreaterThan(0)
   })
 
   it('renders customer type radio options', () => {

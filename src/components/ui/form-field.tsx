@@ -54,6 +54,7 @@ interface RadioOption {
   value: string;
   label: string | React.ReactNode;
   description?: string;
+  disabled?: boolean;
 }
 
 interface RadioFieldProps {
@@ -86,29 +87,38 @@ export function RadioField({
         className="grid grid-cols-1 gap-3"
       >
         {options.map((option) => (
-          <div 
-            key={option.value} 
+          <div
+            key={option.value}
             className={cn(
-              "flex items-start space-x-3 p-3 rounded-lg border transition-colors cursor-pointer hover:bg-muted/50",
-              value === option.value ? "border-primary bg-primary/5" : "border-transparent"
+              'flex items-start space-x-3 p-3 rounded-lg border transition-colors',
+              option.disabled
+                ? 'opacity-60 cursor-not-allowed bg-muted/30 border-border/40'
+                : 'cursor-pointer hover:bg-muted/50',
+              !option.disabled && value === option.value
+                ? 'border-primary bg-primary/5'
+                : !option.disabled
+                  ? 'border-transparent'
+                  : '',
             )}
           >
             <RadioGroupItem
               value={option.value}
               id={`${name}-${option.value}`}
               className="mt-1"
+              disabled={option.disabled}
             />
             <div className="grid gap-1.5 leading-none w-full">
               <Label
                 htmlFor={`${name}-${option.value}`}
-                className="text-sm font-medium leading-none cursor-pointer"
+                className={cn(
+                  'text-sm font-medium leading-none',
+                  option.disabled ? 'cursor-not-allowed' : 'cursor-pointer',
+                )}
               >
                 {option.label}
               </Label>
               {option.description && (
-                <p className="text-xs text-muted-foreground">
-                  {option.description}
-                </p>
+                <p className="text-xs text-muted-foreground">{option.description}</p>
               )}
             </div>
           </div>

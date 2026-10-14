@@ -11,10 +11,19 @@ import { getVehicleDetails } from '@/lib/allianz-api';
 import type { InsuranceFormData } from '@/types';
 import type { IdentityType, ApiErrorResponse } from '@/types/allianz';
 import { vehicleDataNotFoundWithGuidance } from '@/lib/vehicle-lookup-messages';
+import {
+  ALLIANZ_IS_DEMO_KEY,
+  findBlockedVehicleLookup,
+  rememberBlockedVehicleLookup,
+  restoreInsuranceFormDraftFromSubmitted,
+  vehicleDetailsPagePath,
+} from '@/lib/insurance-session';
 import { formatUBBMessage, UBB_REFER_MESSAGES } from '@/types/allianz';
 import { AlertTriangle, XCircle, ArrowLeft } from 'lucide-react';
 
 const STEPS = ['Vehicle Details', 'Quotation', 'Customer Info', 'Review & Pay'];
+
+const NCD_CONFIRMATION_UNAVAILABLE = 'NCD_CONFIRMATION_UNAVAILABLE';
 
 function parseIsmClaims(ismSrespCode: string, ismSrespValue: string): string {
   const codes = ismSrespCode.split('|').map((s) => s.trim());
@@ -35,7 +44,15 @@ export default function LoadingPage() {
     ubbReferCodes?: string[];
     policyExpiryDate?: string;
     requestId?: string;
+    vehicleBlocked?: boolean;
   } | null>(null);
+
+  const handleBackToForm = () => {
+    restoreInsuranceFormDraftFromSubmitted();
+    router.push(
+      vehicleDetailsPagePath({ demo: sessionStorage.getItem(ALLIANZ_IS_DEMO_KEY) === 'true' }),
+    );
+  };
 
   React.useEffect(() => {
     let cancelled = false;
@@ -52,6 +69,30 @@ export default function LoadingPage() {
     } catch {
       router.push('/');
       return;
+    }
+
+    if (formData.vehicleType === 'motorcycle') {
+      setError(
+        'Motorcycle cover is coming soon. Please go back and continue with Car (Allianz private car comprehensive).',
+      );
+      setProgress(100);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const lookupIdentity = {
+      plateNumber: formData.plateNumber ?? '',
+      identityNumber: formData.nric ?? '',
+    };
+    const blocked = findBlockedVehicleLookup(lookupIdentity);
+    if (blocked) {
+      setError(blocked.message);
+      setErrorDetails({ requestId: blocked.requestId, vehicleBlocked: true });
+      setProgress(100);
+      return () => {
+        cancelled = true;
+      };
     }
 
     const messageTimer = setInterval(() => {
@@ -97,7 +138,11 @@ export default function LoadingPage() {
 
         setProgress(100);
         setTimeout(() => {
-          router.push('/results');
+          router.push(
+            sessionStorage.getItem('allianz_isDemo') === 'true'
+              ? '/results?demo=true'
+              : '/results',
+          );
         }, 400);
       } catch (err: unknown) {
         if (cancelled) return;
@@ -126,8 +171,21 @@ export default function LoadingPage() {
           ) {
             message = vehicleDataNotFoundWithGuidance(plate, UBB_REFER_MESSAGES.ID_MISMATCH);
           }
+          const vehicleBlocked = apiErr?.code === NCD_CONFIRMATION_UNAVAILABLE;
+          if (vehicleBlocked) {
+            rememberBlockedVehicleLookup({
+              ...lookupIdentity,
+              code: apiErr.code,
+              message,
+              requestId: apiErr.requestId,
+            });
+          }
           setError(message);
-          setErrorDetails(apiErr?.requestId ? { requestId: apiErr.requestId } : null);
+          setErrorDetails(
+            apiErr?.requestId || vehicleBlocked
+              ? { requestId: apiErr?.requestId, vehicleBlocked }
+              : null,
+          );
         }
 
         setProgress(100);
@@ -189,7 +247,7 @@ export default function LoadingPage() {
                 Reference: <span className="font-mono">{errorDetails.requestId}</span>
               </p>
             )}
-            <Button onClick={() => router.push('/')} className="h-11 rounded-full px-6">
+            <Button onClick={handleBackToForm} className="h-11 rounded-full px-6">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to form
             </Button>

@@ -17,3 +17,9 @@ export const RAHMAH_PACKAGE_CODE =
 
 export const RAHMAH_MAX_SUM_INSURED = 30_000;
 export const RAHMAH_MAX_ENGINE_CC = 1_500;
+
+/** Shown under Included coverage when Rahmah package applies (no extra premium). */
+export const RAHMAH_INCLUSIONS = [
+  'Eligible comprehensive benefits under the Rahmah package for lower sum insured / engine CC vehicles',
+  'Coverage provided at no additional cost when the package is applied to your quote',
+] as const;

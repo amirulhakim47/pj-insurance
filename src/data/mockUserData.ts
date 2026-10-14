@@ -66,8 +66,12 @@ export const defaultFormValues: Partial<InsuranceFormData> = {
 
 // Form field options
 export const vehicleTypeOptions = [
-  { value: 'car' as VehicleType, label: 'Car', description: 'Private car or sedan' },
-  { value: 'motorcycle' as VehicleType, label: 'Motorcycle', description: 'Motorcycle or scooter' },
+  { value: 'car' as VehicleType, label: 'Car', description: 'Private car comprehensive (Allianz)' },
+  {
+    value: 'motorcycle' as VehicleType,
+    label: 'Motorcycle',
+    description: 'Not available yet — motorcycle cover coming soon',
+  },
 ];
 
 export const customerTypeOptions = [

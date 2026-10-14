@@ -5,10 +5,8 @@ import {
 import { isDemoContract } from '@/lib/server/demo-mode';
 
 describe('validateEhailingDriver', () => {
-  it('requires name and ID', () => {
-    const errors = validateEhailingDriver({ fullName: '', idNumber: '' });
-    expect(errors.fullName).toBeDefined();
-    expect(errors.idNumber).toBeDefined();
+  it('returns no errors when e-Hailing fields are empty (optional)', () => {
+    expect(validateEhailingDriver({ fullName: '', idNumber: '' })).toEqual({});
   });
 
   it('accepts valid input', () => {
@@ -25,18 +23,15 @@ describe('demo contract helper', () => {
 });
 
 describe('validateQuotationStepBeforeProceed', () => {
-  it('blocks proceed when A202 is selected but e-Hailing driver is empty', () => {
-    const result = validateQuotationStepBeforeProceed({
-      selectedAddons: new Set(['A202']),
-      ehailingDriver: { fullName: '', idNumber: '' },
-      driverPlan: '0',
-      additionalDrivers: [],
-    });
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.focusTarget).toBe('ehailing');
-      expect(result.ehailingErrors?.fullName).toBeDefined();
-    }
+  it('allows proceed when A202 is selected without e-Hailing driver (UAT)', () => {
+    expect(
+      validateQuotationStepBeforeProceed({
+        selectedAddons: new Set(['A202']),
+        ehailingDriver: { fullName: '', idNumber: '' },
+        driverPlan: '0',
+        additionalDrivers: [],
+      }).ok,
+    ).toBe(true);
   });
 
   it('allows proceed when A202 is not selected', () => {
@@ -55,7 +50,24 @@ describe('validateQuotationStepBeforeProceed', () => {
       selectedAddons: new Set(),
       ehailingDriver: { fullName: '', idNumber: '' },
       driverPlan: '1',
-      additionalDrivers: [{ fullName: '', idNumber: '' }],
+      additionalDrivers: [{ fullName: '', nationality: 'MALAYSIA', idType: 'NRIC', idNumber: '' }],
+    });
+    expect(result.ok).toBe(false);
+  });
+
+  it('rejects invalid NRIC for additional driver', () => {
+    const result = validateQuotationStepBeforeProceed({
+      selectedAddons: new Set(),
+      ehailingDriver: { fullName: '', idNumber: '' },
+      driverPlan: '1',
+      additionalDrivers: [
+        {
+          fullName: 'AHMAD BIN ALI',
+          nationality: 'MALAYSIA',
+          idType: 'NRIC',
+          idNumber: '123',
+        },
+      ],
     });
     expect(result.ok).toBe(false);
   });
