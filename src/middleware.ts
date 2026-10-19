@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { buildContentSecurityPolicy, generateCspNonce } from '@/lib/security-headers';
+
+const API_CSP = "default-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
 
 const WINDOW_MS = 60_000;
 const MAX_API_REQUESTS = 80;
@@ -43,12 +46,28 @@ function rateLimit(key: string, limit: number): { allowed: boolean; retryAfterSe
   return { allowed: true, retryAfterSec: 0 };
 }
 
-export function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
-  if (!pathname.startsWith('/api/')) {
-    return NextResponse.next();
-  }
+function withPageCsp(req: NextRequest): NextResponse {
+  const nonce = generateCspNonce();
+  const csp = buildContentSecurityPolicy({ nonce, isDev: process.env.NODE_ENV === 'development' });
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set('x-nonce', nonce);
+  requestHeaders.set('Content-Security-Policy', csp);
+  const res = NextResponse.next({ request: { headers: requestHeaders } });
+  res.headers.set('Content-Security-Policy', csp);
+  return res;
+}
 
+export function middleware(req: NextRequest) {
+  if (!req.nextUrl.pathname.startsWith('/api/')) {
+    return withPageCsp(req);
+  }
+  const res = handleApi(req);
+  res.headers.set('Content-Security-Policy', API_CSP);
+  return res;
+}
+
+function handleApi(req: NextRequest): NextResponse {
+  const { pathname } = req.nextUrl;
   if (pathname === '/api/health') {
     return NextResponse.next();
   }
@@ -76,5 +95,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: '/api/:path*',
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };

@@ -28,14 +28,16 @@ const mockSessionStorage = {
   clear: jest.fn(),
 }
 
-Object.defineProperty(window, 'sessionStorage', {
-  value: mockSessionStorage,
-})
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, 'sessionStorage', {
+    value: mockSessionStorage,
+  })
 
-// Mock window.open
-Object.defineProperty(window, 'open', {
-  value: jest.fn(),
-})
+  // Mock window.open
+  Object.defineProperty(window, 'open', {
+    value: jest.fn(),
+  })
+}
 
 // Mock IntersectionObserver
 global.IntersectionObserver = class IntersectionObserver {

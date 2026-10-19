@@ -27,6 +27,9 @@ export const metadata: Metadata = {
   authors: [{ name: "Insurance Renewal Platform" }],
 };
 
+// The CSP nonce is generated per request in middleware; prerendered HTML could not carry it.
+export const dynamic = 'force-dynamic';
+
 export const viewport = {
   width: 'device-width',
   initialScale: 1,

@@ -15,6 +15,26 @@ const nextConfig = {
 
   compress: true,
 
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=()' },
+          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+        ],
+      },
+      {
+        source: '/api/:path*',
+        headers: [{ key: 'Cache-Control', value: 'no-store' }],
+      },
+    ]
+  },
+
   webpack: (config, { isServer }) => {
     // Explicit alias — some hosts (e.g. Hostinger) don't resolve tsconfig paths reliably
     config.resolve.alias['@'] = path.join(__dirname, 'src')
