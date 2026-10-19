@@ -8,6 +8,8 @@ import {
   groupAvVariantsBySumInsured,
   getUniqueAvVariantNames,
   getAvTiersForVariantName,
+  getAvTierOptions,
+  getAvSumInsuredRange,
   avTierLabel,
 } from '@/lib/addon-quote';
 import type { AdditionalCoverItem } from '@/types/allianz';
@@ -70,6 +72,50 @@ describe('addon-quote utilities', () => {
     expect(tiers).toHaveLength(2);
     expect(avTierLabel(0, 2, tiers[0].SumInsured)).toBe('Low');
     expect(avTierLabel(1, 2, tiers[1].SumInsured)).toBe('High');
+    expect(getAvTierOptions(rows, 'HATCH AV').map((o) => o.label)).toEqual(['Low', 'High']);
+  });
+
+  describe('Allianz AV LOV with tier encoded in the variant name', () => {
+    const base = 'STANDARD 4D HATCHBACK 5 SP MANUAL CKD 1332 CC';
+    const exec = 'EXECUTIVE 4D HATCHBACK 5 SP MANUAL CKD 1332 CC';
+    const row = (Variant: string, AvCode: string, SumInsured: string) => ({
+      Variant, AvCode, SumInsured, VehicleEngineCC: 1332, MakeYear: '2014', AzVariant: '31*0013232',
+    });
+    const rows = [
+      row(`${base} - HIGH`, 'IYZ14I-HI', '14000.00'),
+      row(`${base} - LOW`, 'IYZ14I-LO', '12000.00'),
+      row(base, 'IYZ14I', '13000.00'),
+      row(`${exec} - LOW`, 'IZ114I-LO', '13000.00'),
+      row(exec, 'IZ114I', '14000.00'),
+      row(`${exec} - HIGH`, 'IZ114I-HI', '15000.00'),
+    ];
+
+    it('groups LOW / MED / HIGH rows under one variant name', () => {
+      expect(getUniqueAvVariantNames(rows)).toEqual([exec, base]);
+    });
+
+    it('returns Low, Med, High options with their sum insured, in that order', () => {
+      const options = getAvTierOptions(rows, base);
+      expect(options.map((o) => [o.label, o.variant.AvCode, o.variant.SumInsured])).toEqual([
+        ['Low', 'IYZ14I-LO', '12000.00'],
+        ['Med', 'IYZ14I', '13000.00'],
+        ['High', 'IYZ14I-HI', '14000.00'],
+      ]);
+    });
+
+    it('falls back to the AvCode suffix when the name has no tier suffix', () => {
+      const codeOnly = [
+        row('SEDAN X', 'ABC-HI', '20000.00'),
+        row('SEDAN X', 'ABC-LO', '18000.00'),
+        row('SEDAN X', 'ABC', '19000.00'),
+      ];
+      expect(getUniqueAvVariantNames(codeOnly)).toEqual(['SEDAN X']);
+      expect(getAvTierOptions(codeOnly, 'SEDAN X').map((o) => o.label)).toEqual(['Low', 'Med', 'High']);
+    });
+
+    it('summarises the sum insured range for a variant', () => {
+      expect(getAvSumInsuredRange(rows, base)).toEqual({ min: 12000, max: 14000 });
+    });
   });
 
 });

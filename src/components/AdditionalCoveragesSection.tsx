@@ -401,7 +401,9 @@ function AddonCoverRow({
 
               {cover.coverCode === 'A202' && (
                 <div id="ehailing-driver-section" className="space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground">e-Hailing driver details (optional)</p>
+                  <p className="text-xs font-medium text-muted-foreground">
+                    e-Hailing driver (Malaysian NRIC holder; optional to edit)
+                  </p>
                   <div>
                     <label className="text-xs text-muted-foreground">Driver name</label>
                     <input
@@ -423,7 +425,7 @@ function AddonCoverRow({
                     )}
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground">ID no.</label>
+                    <label className="text-xs text-muted-foreground">NRIC no.</label>
                     <input
                       value={ehailingDriver.idNumber}
                       onChange={(e) => onEhailingChange({ ...ehailingDriver, idNumber: e.target.value })}

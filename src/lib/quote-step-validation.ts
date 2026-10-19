@@ -7,6 +7,31 @@ export interface EhailingDriverInput {
 
 export interface AdditionalDriverInput extends NamedDriverFields {}
 
+/**
+ * e-Hailing driver defaults to the policyholder. Malaysian e-hailing platforms require a Malaysian
+ * citizen (NRIC); passport holders are not prefilled because the driver ID field is NRIC-only.
+ */
+export function ehailingDriverFromPolicyholder(
+  policyholder: {
+    customerType?: string;
+    identityType?: string;
+    fullName?: string;
+    nric?: string;
+  } | null,
+): EhailingDriverInput {
+  if (
+    !policyholder ||
+    policyholder.customerType === 'company' ||
+    policyholder.identityType !== 'NRIC'
+  ) {
+    return { fullName: '', idNumber: '' };
+  }
+  return {
+    fullName: (policyholder.fullName ?? '').trim().toUpperCase(),
+    idNumber: (policyholder.nric ?? '').trim(),
+  };
+}
+
 export type QuotationStepFocusTarget = 'ehailing' | 'additionalDrivers';
 
 export type QuotationStepValidationResult =

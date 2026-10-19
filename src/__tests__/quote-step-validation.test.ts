@@ -1,8 +1,37 @@
 import {
+  ehailingDriverFromPolicyholder,
   validateEhailingDriver,
   validateQuotationStepBeforeProceed,
 } from '@/lib/quote-step-validation';
 import { isDemoContract } from '@/lib/server/demo-mode';
+
+describe('ehailingDriverFromPolicyholder', () => {
+  it('prefills name and NRIC for an individual NRIC policyholder', () => {
+    const driver = ehailingDriverFromPolicyholder({
+      customerType: 'individual',
+      identityType: 'NRIC',
+      fullName: ' ahmad bin ali ',
+      nric: '841103-01-1116',
+    });
+    expect(driver).toEqual({ fullName: 'AHMAD BIN ALI', idNumber: '841103-01-1116' });
+    expect(validateEhailingDriver(driver)).toEqual({});
+  });
+
+  it('leaves fields empty for company and non-NRIC policyholders', () => {
+    const empty = { fullName: '', idNumber: '' };
+    expect(
+      ehailingDriverFromPolicyholder({
+        customerType: 'company', identityType: 'BR_NO', fullName: 'ABC SDN BHD', nric: '201901000005',
+      }),
+    ).toEqual(empty);
+    expect(
+      ehailingDriverFromPolicyholder({
+        customerType: 'individual', identityType: 'PASS', fullName: 'JOHN DOE', nric: 'A1234567',
+      }),
+    ).toEqual(empty);
+    expect(ehailingDriverFromPolicyholder(null)).toEqual(empty);
+  });
+});
 
 describe('validateEhailingDriver', () => {
   it('returns no errors when e-Hailing fields are empty (optional)', () => {

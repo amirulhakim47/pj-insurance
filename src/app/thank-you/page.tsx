@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { CheckCircle, Download, Home, Info, Loader2, FileText, AlertTriangle } from 'lucide-react';
 import type { QuotationResponse, VehicleDetailsResponse } from '@/types/allianz';
 import type { InsuranceFormData } from '@/types';
+import { ALLIANZ_DOCUMENTS } from '@/config/allianz-documents';
 type PolicyStatus =
   | { ready: false }
   | {
@@ -238,6 +239,20 @@ export default function ThankYouPage() {
                 </a>
               </div>
             )}
+
+            <p className="text-xs text-muted-foreground leading-relaxed rounded-lg bg-muted/40 border border-border/40 px-3 py-2.5">
+              You are entitled for premium refund upon cancellation of the policy, subject to the refund
+              policy as outlined in the{' '}
+              <a
+                href={ALLIANZ_DOCUMENTS.policyWording}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary font-medium hover:underline"
+              >
+                Policy Wording
+              </a>
+              .
+            </p>
 
             {/* ── Contact Info ── */}
             <p className="text-xs text-muted-foreground text-center leading-relaxed">

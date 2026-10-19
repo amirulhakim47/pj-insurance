@@ -52,6 +52,19 @@ describe('ThankYouPage', () => {
     expect(screen.getByText('Payment successful')).toBeInTheDocument();
   });
 
+  it('shows the premium refund statement linking to the Policy Wording', async () => {
+    await act(async () => { render(<ThankYouPage />); });
+    expect(
+      screen.getByText(/You are entitled for premium refund upon cancellation of the policy/),
+    ).toBeInTheDocument();
+    const link = screen.getByRole('link', { name: 'Policy Wording' });
+    expect(link).toHaveAttribute(
+      'href',
+      'https://www.allianz.com.my/content/dam/onemarketing/azmb/wwwallianzcommy/product-document/PrivateCar-PW_ENG.pdf',
+    );
+    expect(link).toHaveAttribute('target', '_blank');
+  });
+
   it('displays policy summary with contract number', async () => {
     await act(async () => { render(<ThankYouPage />); });
     expect(screen.getByText('Policy summary')).toBeInTheDocument();

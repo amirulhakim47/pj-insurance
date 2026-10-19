@@ -7,7 +7,7 @@ import { AllianzLogo } from '@/components/ui/allianz-logo';
 import { PageLayout, Container, StepIndicator } from '@/components/ui/layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, CreditCard, Check, Shield, Car, Info, FileText, ExternalLink, HelpCircle } from 'lucide-react';
+import { ArrowLeft, CreditCard, Check, ChevronDown, Shield, Car, Info, FileText, ExternalLink, HelpCircle } from 'lucide-react';
 import {
   AdditionalCoveragesSection,
   RoadRangersTooltipButton,
@@ -23,8 +23,8 @@ import {
   clampGasKitSumInsured,
   defaultAddonInputsForCover,
   getUniqueAvVariantNames,
-  getAvTiersForVariantName,
-  avTierLabel,
+  getAvTierOptions,
+  getAvSumInsuredRange,
   type AddonInputState,
 } from '@/lib/addon-quote';
 import { applyDemoQuoteUpdate } from '@/lib/demo-quote';
@@ -33,7 +33,10 @@ import {
   restoreInsuranceFormDraftFromSubmitted,
   vehicleDetailsPagePath,
 } from '@/lib/insurance-session';
-import { validateQuotationStepBeforeProceed } from '@/lib/quote-step-validation';
+import {
+  ehailingDriverFromPolicyholder,
+  validateQuotationStepBeforeProceed,
+} from '@/lib/quote-step-validation';
 import {
   AdditionalDriverFormFields,
   type AdditionalDriverFormValues,
@@ -44,6 +47,7 @@ import {
   validateNamedDriverFields,
 } from '@/lib/validations';
 import { syncQuotePremiumForPayment } from '@/lib/quote-premium-sync';
+import { DEMO_AV_VARIANTS_FROM_UAT_LOV } from '@/data/demoAvVariants';
 import {
   ALLIANZ_DOCUMENTS,
   AGENT_DISPLAY_NAME,
@@ -191,7 +195,7 @@ function ResultsPage() {
 
   const avTiersForSelectedVariant = React.useMemo(() => {
     if (!selectedAvVariantName) return [];
-    return getAvTiersForVariantName(avVariants, selectedAvVariantName);
+    return getAvTierOptions(avVariants, selectedAvVariantName);
   }, [avVariants, selectedAvVariantName]);
 
   const canGenerateQuote = React.useMemo(() => {
@@ -232,7 +236,13 @@ function ResultsPage() {
   }, [router, isDemo]);
 
   React.useEffect(() => {
-    if (!vehicleDetails || isDemo) return;
+    if (!vehicleDetails) return;
+    if (isDemo) {
+      setAvVariants(DEMO_AV_VARIANTS_FROM_UAT_LOV);
+      setAvAvailable(true);
+      setIsLoadingAv(false);
+      return;
+    }
     const fetchAvVariants = async () => {
       setIsLoadingAv(true);
       try {
@@ -398,6 +408,9 @@ function ResultsPage() {
         }
       });
       setSelectedAddons(preSelected);
+      if (preSelected.has('A202')) {
+        setEhailingDriver(ehailingDriverFromPolicyholder(formData));
+      }
     } catch (err: unknown) {
       console.error('Quote generation error:', err);
       const apiErr = err as { message?: string };
@@ -533,8 +546,12 @@ function ResultsPage() {
     }
     setSelectedAddons(newSelected);
 
-    if (cover.coverCode === 'A202' && !newSelected.has('A202')) {
-      setEhailingDriver({ fullName: '', idNumber: '' });
+    if (cover.coverCode === 'A202') {
+      setEhailingDriver(
+        newSelected.has('A202')
+          ? ehailingDriverFromPolicyholder(formData)
+          : { fullName: '', idNumber: '' },
+      );
       setEhailingErrors({});
     }
 
@@ -866,57 +883,71 @@ function ResultsPage() {
                 <div className="space-y-4">
                   <div className="space-y-3">
                     <div className="text-center space-y-1">
-                      <h3 className="font-semibold text-base">Step 1: Which variant do you own?</h3>
-                      <p className="text-xs text-muted-foreground">Select the variant that matches your vehicle grant.</p>
+                      <h3 className="font-semibold text-base">Which variant do you own?</h3>
+                      <p className="text-xs text-muted-foreground">Select the variant that matches your vehicle grant, then choose a Low, Med, or High agreed value.</p>
                     </div>
                     <div className="space-y-2">
-                      {avVariantNames.map((name) => (
-                        <button
-                          key={name}
-                          type="button"
-                          onClick={() => {
-                            setSelectedAvVariantName(name);
-                            setSelectedAvVariant(null);
-                          }}
-                          className={`w-full text-left p-3.5 rounded-xl border-2 transition-all duration-300 ${selectedAvVariantName === name ? 'border-primary bg-primary/5 shadow-md shadow-primary/5' : 'border-border/40 hover:border-primary/30 hover:shadow-sm'}`}
-                        >
-                          <p className="font-medium text-sm">{name}</p>
-                        </button>
-                      ))}
+                      {avVariantNames.map((name) => {
+                        const isOpen = selectedAvVariantName === name;
+                        const range = getAvSumInsuredRange(avVariants, name);
+                        return (
+                          <div
+                            key={name}
+                            className={`rounded-xl border-2 transition-all duration-300 ${isOpen ? 'border-primary bg-primary/5 shadow-md shadow-primary/5' : 'border-border/40 hover:border-primary/30 hover:shadow-sm'}`}
+                          >
+                            <button
+                              type="button"
+                              aria-expanded={isOpen}
+                              onClick={() => {
+                                setSelectedAvVariantName(isOpen ? null : name);
+                                setSelectedAvVariant(null);
+                              }}
+                              className="w-full text-left p-3.5 flex items-center justify-between gap-3"
+                            >
+                              <div className="min-w-0">
+                                <p className="font-medium text-sm">{name}</p>
+                                {range && (
+                                  <p className="text-xs text-muted-foreground mt-0.5">
+                                    {range.min === range.max
+                                      ? `RM ${range.min.toLocaleString('en-MY')}`
+                                      : `RM ${range.min.toLocaleString('en-MY')} – RM ${range.max.toLocaleString('en-MY')}`}
+                                  </p>
+                                )}
+                              </div>
+                              <ChevronDown className={`w-4 h-4 flex-shrink-0 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {isOpen && avTiersForSelectedVariant.length > 0 && (
+                              <div className="px-3.5 pb-3.5 space-y-2">
+                                {avTiersForSelectedVariant.map(({ label, variant: av }) => {
+                                  const isSelected = selectedAvVariant?.AvCode === av.AvCode;
+                                  return (
+                                    <button
+                                      key={av.AvCode}
+                                      type="button"
+                                      onClick={() => setSelectedAvVariant(av)}
+                                      className={`w-full flex items-center justify-between p-3 rounded-lg border-2 bg-background transition-all duration-200 ${isSelected ? 'border-primary' : 'border-border/40 hover:border-primary/30'}`}
+                                    >
+                                      <span className="flex items-center gap-2 text-sm font-medium">
+                                        <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${isSelected ? 'border-primary' : 'border-muted-foreground/40'}`}>
+                                          {isSelected && <span className="w-2 h-2 rounded-full bg-primary" />}
+                                        </span>
+                                        {label}
+                                      </span>
+                                      <span className="text-right">
+                                        <span className="block font-bold text-sm">RM {parseFloat(av.SumInsured).toLocaleString('en-MY')}</span>
+                                        <span className="block text-[10px] text-muted-foreground uppercase">Sum Insured</span>
+                                      </span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
-
-                  {selectedAvVariantName && avTiersForSelectedVariant.length > 0 && (
-                    <div className="space-y-3">
-                      <div className="text-center space-y-1">
-                        <h3 className="font-semibold text-base">Step 2: Choose sum insured tier</h3>
-                        <p className="text-xs text-muted-foreground">Low, Med, or High agreed value for your selected variant.</p>
-                      </div>
-                      <div className="space-y-2">
-                        {avTiersForSelectedVariant.map((av, idx) => (
-                          <button
-                            key={av.AvCode}
-                            type="button"
-                            onClick={() => setSelectedAvVariant(av)}
-                            className={`w-full text-left p-3.5 rounded-xl border-2 transition-all duration-300 ${selectedAvVariant?.AvCode === av.AvCode ? 'border-primary bg-primary/5 shadow-md shadow-primary/5' : 'border-border/40 hover:border-primary/30 hover:shadow-sm'}`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="font-medium text-sm">
-                                  {avTierLabel(idx, avTiersForSelectedVariant.length, av.SumInsured)}
-                                </p>
-                                <p className="text-xs text-muted-foreground">{av.VehicleEngineCC} CC | {av.MakeYear}</p>
-                              </div>
-                              <div className="text-right">
-                                <p className="font-bold text-base">RM {parseFloat(av.SumInsured).toLocaleString('en-MY')}</p>
-                                <p className="text-[10px] text-muted-foreground uppercase">Sum Insured</p>
-                              </div>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
 
                   <div className="text-center pt-2">
                     <Button onClick={handleGenerateQuote} disabled={!canGenerateQuote || isLoadingQuote} className="h-12 px-8 text-base font-semibold">

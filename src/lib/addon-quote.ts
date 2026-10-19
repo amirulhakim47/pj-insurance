@@ -128,25 +128,95 @@ export function avTierLabel(index: number, total: number, sumInsured?: string): 
   return `Tier ${index + 1}`;
 }
 
-/** Step 1: distinct variant descriptions from AV LOV. */
-export function getUniqueAvVariantNames<T extends { Variant: string }>(variants: T[]): string[] {
-  const seen = new Set<string>();
-  const names: string[] = [];
-  for (const v of variants) {
-    const key = v.Variant.trim();
-    if (!key || seen.has(key)) continue;
-    seen.add(key);
-    names.push(key);
+type AvTier = 'LOW' | 'MED' | 'HIGH';
+
+const AV_TIER_ORDER: AvTier[] = ['LOW', 'MED', 'HIGH'];
+const AV_TIER_LABELS: Record<AvTier, string> = { LOW: 'Low', MED: 'Med', HIGH: 'High' };
+const AV_NAME_TIER_SUFFIX = /\s*-\s*(LOW|HIGH)\s*$/i;
+const AV_CODE_TIER_SUFFIX = /-(LO|HI)$/i;
+
+/**
+ * Allianz AV LOV returns one row per tier, e.g. "X CC - LOW" / "X CC" / "X CC - HIGH"
+ * (AvCode "…-LO" / "…" / "…-HI"); the unsuffixed row is the MED tier.
+ */
+function parseAvVariant(v: { Variant: string; AvCode?: string }): {
+  baseName: string;
+  explicitTier: AvTier | null;
+} {
+  const name = v.Variant.trim();
+  const nameMatch = name.match(AV_NAME_TIER_SUFFIX);
+  if (nameMatch) {
+    return {
+      baseName: name.replace(AV_NAME_TIER_SUFFIX, '').trim(),
+      explicitTier: nameMatch[1].toUpperCase() as AvTier,
+    };
   }
-  return names.sort((a, b) => a.localeCompare(b));
+  const codeMatch = v.AvCode?.trim().match(AV_CODE_TIER_SUFFIX);
+  if (codeMatch) {
+    return { baseName: name, explicitTier: codeMatch[1].toUpperCase() === 'LO' ? 'LOW' : 'HIGH' };
+  }
+  return { baseName: name, explicitTier: null };
 }
 
-/** Step 2: sum-insured tiers for one variant (deduped by SI). */
-export function getAvTiersForVariantName<T extends { Variant: string; SumInsured: string }>(
+/** Step 1: distinct variant descriptions from AV LOV (tier suffix removed). */
+export function getUniqueAvVariantNames<T extends { Variant: string; AvCode?: string }>(
+  variants: T[],
+): string[] {
+  const names = new Set<string>();
+  for (const v of variants) {
+    const { baseName } = parseAvVariant(v);
+    if (baseName) names.add(baseName);
+  }
+  return [...names].sort((a, b) => a.localeCompare(b));
+}
+
+function rowsForAvVariantName<T extends { Variant: string; AvCode?: string }>(
   variants: T[],
   variantName: string,
 ): T[] {
   const trimmed = variantName.trim();
-  const rows = variants.filter((v) => v.Variant.trim() === trimmed);
-  return groupAvVariantsBySumInsured(rows);
+  return variants.filter((v) => parseAvVariant(v).baseName === trimmed);
+}
+
+/** Step 2: sum-insured tiers for one variant (deduped by SI). */
+export function getAvTiersForVariantName<
+  T extends { Variant: string; SumInsured: string; AvCode?: string },
+>(variants: T[], variantName: string): T[] {
+  return getAvTierOptions(variants, variantName).map((o) => o.variant);
+}
+
+/** Step 2 options with display label: Low / Med / High when Allianz encodes the tier. */
+export function getAvTierOptions<
+  T extends { Variant: string; SumInsured: string; AvCode?: string },
+>(variants: T[], variantName: string): { label: string; variant: T }[] {
+  const rows = rowsForAvVariantName(variants, variantName);
+  const hasExplicitTiers = rows.some((v) => parseAvVariant(v).explicitTier !== null);
+
+  if (!hasExplicitTiers) {
+    const tiers = groupAvVariantsBySumInsured(rows);
+    return tiers.map((variant, i) => ({
+      label: avTierLabel(i, tiers.length, variant.SumInsured),
+      variant,
+    }));
+  }
+
+  const byTier = new Map<AvTier, T>();
+  for (const v of rows) {
+    const tier = parseAvVariant(v).explicitTier ?? 'MED';
+    if (!byTier.has(tier)) byTier.set(tier, v);
+  }
+  return AV_TIER_ORDER.flatMap((t) => {
+    const variant = byTier.get(t);
+    return variant ? [{ label: AV_TIER_LABELS[t], variant }] : [];
+  });
+}
+
+export function getAvSumInsuredRange<
+  T extends { Variant: string; SumInsured: string; AvCode?: string },
+>(variants: T[], variantName: string): { min: number; max: number } | null {
+  const values = rowsForAvVariantName(variants, variantName)
+    .map((v) => parseFloat(v.SumInsured))
+    .filter(Number.isFinite);
+  if (values.length === 0) return null;
+  return { min: Math.min(...values), max: Math.max(...values) };
 }
