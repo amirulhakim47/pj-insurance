@@ -7,8 +7,6 @@ import {
 import { assertSafeContractNumber } from '@/lib/server/contract-number';
 import { secureCompare } from '@/lib/server/secure-compare';
 
-const IS_UAT = process.env.NODE_ENV !== 'production';
-
 function getAllowedIPs(): string[] {
   return (process.env.CALLBACK_ALLOWED_IPS || '')
     .split(',')
@@ -36,8 +34,9 @@ function verifyApiKey(req: NextRequest): boolean {
 
 function verifySourceIP(req: NextRequest): boolean {
   const allowedIPs = getAllowedIPs();
+  // Optional hardening: Allianz has not confirmed fixed callback source IPs, so the API key is the primary control.
   if (allowedIPs.length === 0) {
-    return process.env.NODE_ENV !== 'production';
+    return true;
   }
 
   const forwarded = req.headers.get('x-forwarded-for') || '';
@@ -77,7 +76,7 @@ export async function POST(req: NextRequest) {
       timestamp: new Date().toISOString(),
     });
 
-    if (!IS_UAT && !verifySourceIP(req)) {
+    if (!verifySourceIP(req)) {
       console.warn('[Allianz Callback] BLOCKED — IP not in whitelist:', clientIP);
       return NextResponse.json({ received: false, error: 'Forbidden' }, { status: 403 });
     }
