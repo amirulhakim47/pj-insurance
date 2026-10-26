@@ -10,14 +10,30 @@ import { CheckCircle, XCircle, Home, RefreshCcw } from 'lucide-react';
 import { verifySenangPayHash } from '@/lib/senangpay';
 import { verifyStripeCheckoutSession } from '@/lib/stripe-checkout';
 import { submitAllianzAfterPayment } from '@/lib/payment-after-success';
+import { getCompletedJourney, markJourneyCompleted } from '@/lib/insurance-session';
+import { useCompletedJourneyGuard } from '@/hooks/useCompletedJourneyGuard';
+
+function lockPaidJourney(): void {
+  let contractNumber = '';
+  try {
+    const raw = sessionStorage.getItem('allianz_quotation');
+    contractNumber = raw ? JSON.parse(raw)?.contract?.contractNumber ?? '' : '';
+  } catch {
+    contractNumber = '';
+  }
+  markJourneyCompleted(contractNumber);
+}
 
 function PaymentStatusContent() {
   const router = useRouter();
+  useCompletedJourneyGuard();
   const searchParams = useSearchParams();
   const [status, setStatus] = React.useState<'loading' | 'submitting' | 'success' | 'failed'>('loading');
   const [message, setMessage] = React.useState('');
 
   React.useEffect(() => {
+    if (getCompletedJourney()) return;
+
     const provider = searchParams.get('provider');
     const sessionId = searchParams.get('session_id');
 
@@ -29,7 +45,7 @@ function PaymentStatusContent() {
         console.error('Allianz submission error (non-blocking):', submissionErr);
       }
       setStatus('success');
-      setTimeout(() => router.push('/thank-you'), 1500);
+      setTimeout(() => router.replace('/thank-you'), 1500);
     };
 
     const verifyAndSubmit = async () => {
@@ -50,6 +66,7 @@ function PaymentStatusContent() {
           if (verification.policyAccessToken) {
             sessionStorage.setItem('policyAccessToken', verification.policyAccessToken);
           }
+          lockPaidJourney();
 
           const orderId = verification.order_id || '';
           const transactionId = verification.transaction_id || sessionId;
@@ -58,7 +75,7 @@ function PaymentStatusContent() {
           const formDataRaw = sessionStorage.getItem('insuranceFormData');
           if (!formDataRaw || !quotationRaw) {
             setStatus('success');
-            setTimeout(() => router.push('/thank-you'), 1500);
+            setTimeout(() => router.replace('/thank-you'), 1500);
             return;
           }
 
@@ -98,12 +115,13 @@ function PaymentStatusContent() {
           setMessage(msg ? msg.replace(/_/g, ' ') : 'Payment failed');
           return;
         }
+        lockPaidJourney();
 
         const quotationRaw = sessionStorage.getItem('allianz_quotation');
         const formDataRaw = sessionStorage.getItem('insuranceFormData');
         if (!formDataRaw || !quotationRaw) {
           setStatus('success');
-          setTimeout(() => router.push('/thank-you'), 1500);
+          setTimeout(() => router.replace('/thank-you'), 1500);
           return;
         }
 

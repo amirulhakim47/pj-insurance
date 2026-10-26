@@ -21,6 +21,9 @@ import {
   type AdditionalDriverFormValues,
 } from '@/components/AdditionalDriverFormFields';
 import { getLOV } from '@/lib/allianz-api';
+import { getCompletedJourney } from '@/lib/insurance-session';
+import { useCompletedJourneyGuard } from '@/hooks/useCompletedJourneyGuard';
+import { JourneyCompletedRedirect } from '@/components/JourneyCompletedRedirect';
 import type { InsuranceFormData } from '@/types';
 import type { VehicleDetailsResponse } from '@/types/allianz';
 
@@ -69,6 +72,7 @@ const readonlyClass = 'mt-1 w-full rounded-lg border border-input/60 bg-muted/30
 
 export default function CustomerDetailsPage() {
   const router = useRouter();
+  const journeyLocked = useCompletedJourneyGuard();
   const [formData, setFormData] = React.useState<InsuranceFormData | null>(null);
   const [vehicleDetails, setVehicleDetails] = React.useState<VehicleDetailsResponse | null>(null);
   const [driverPlan, setDriverPlan] = React.useState<string>('0');
@@ -88,6 +92,7 @@ export default function CustomerDetailsPage() {
   const postcode = watch('postcode');
 
   React.useEffect(() => {
+    if (getCompletedJourney()) return;
     const storedFormData = sessionStorage.getItem('insuranceFormData');
     const storedVehicle = sessionStorage.getItem('allianz_vehicleDetails');
     const storedQuotation = sessionStorage.getItem('allianz_quotation');
@@ -232,6 +237,7 @@ export default function CustomerDetailsPage() {
     router.push('/payment');
   };
 
+  if (journeyLocked) return <JourneyCompletedRedirect />;
   if (!formData) return null;
   const isNRIC = identityType === 'NRIC';
   const showDriverForms = driverPlan === '1' || driverPlan === '2';

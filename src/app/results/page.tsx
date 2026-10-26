@@ -30,9 +30,12 @@ import {
 import { applyDemoQuoteUpdate } from '@/lib/demo-quote';
 import {
   ALLIANZ_IS_DEMO_KEY,
+  getCompletedJourney,
   restoreInsuranceFormDraftFromSubmitted,
   vehicleDetailsPagePath,
 } from '@/lib/insurance-session';
+import { useCompletedJourneyGuard } from '@/hooks/useCompletedJourneyGuard';
+import { JourneyCompletedRedirect } from '@/components/JourneyCompletedRedirect';
 import {
   ehailingDriverFromPolicyholder,
   validateQuotationStepBeforeProceed,
@@ -152,6 +155,7 @@ export default function ResultsPageWrapper() {
 
 function ResultsPage() {
   const router = useRouter();
+  const journeyLocked = useCompletedJourneyGuard();
   const searchParams = useSearchParams();
   const isDemo =
     process.env.NEXT_PUBLIC_ALLOW_DEMO === 'true' && searchParams.get('demo') === 'true';
@@ -205,6 +209,7 @@ function ResultsPage() {
   }, [isReconditioned, siBasis, selectedNvic, selectedAvVariantName, selectedAvVariant]);
 
   React.useEffect(() => {
+    if (getCompletedJourney()) return;
     if (isDemo) {
       setFormData(DEMO_FORM_DATA);
       setVehicleDetails(DEMO_VEHICLE);
@@ -752,6 +757,7 @@ function ResultsPage() {
     router.push(vehicleDetailsPagePath({ demo: isDemo }));
   };
 
+  if (journeyLocked) return <JourneyCompletedRedirect />;
   if (!formData && !isDemo) return null;
 
   const visibleCovers = quotation?.additionalCover?.filter((c) => isCoverVisibleForDcAuto(c)) || [];

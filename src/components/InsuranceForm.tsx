@@ -25,6 +25,7 @@ import { Car, Bike, ArrowRight, ArrowLeft } from 'lucide-react';
 import {
   INSURANCE_FORM_DATA_KEY,
   INSURANCE_FORM_DRAFT_KEY,
+  startNewJourneyAfterPayment,
 } from '@/lib/insurance-session';
 
 const FORM_DRAFT_KEY = INSURANCE_FORM_DRAFT_KEY;
@@ -164,6 +165,7 @@ export default function InsuranceForm() {
   const onSubmit = async (data: InsuranceFormData) => {
     setIsSubmitting(true);
     try {
+      startNewJourneyAfterPayment();
       sessionStorage.setItem(INSURANCE_FORM_DATA_KEY, JSON.stringify(data));
       sessionStorage.removeItem(FORM_DRAFT_KEY);
       router.push('/loading');

@@ -14,12 +14,15 @@ import { vehicleDataNotFoundWithGuidance } from '@/lib/vehicle-lookup-messages';
 import {
   ALLIANZ_IS_DEMO_KEY,
   findBlockedVehicleLookup,
+  getCompletedJourney,
   rememberBlockedVehicleLookup,
   restoreInsuranceFormDraftFromSubmitted,
   vehicleDetailsPagePath,
 } from '@/lib/insurance-session';
 import { formatUBBMessage, UBB_REFER_MESSAGES } from '@/types/allianz';
 import { AlertTriangle, XCircle, ArrowLeft } from 'lucide-react';
+import { useCompletedJourneyGuard } from '@/hooks/useCompletedJourneyGuard';
+import { JourneyCompletedRedirect } from '@/components/JourneyCompletedRedirect';
 
 const STEPS = ['Vehicle Details', 'Quotation', 'Customer Info', 'Review & Pay'];
 
@@ -37,6 +40,7 @@ function parseIsmClaims(ismSrespCode: string, ismSrespValue: string): string {
 
 export default function LoadingPage() {
   const router = useRouter();
+  const journeyLocked = useCompletedJourneyGuard();
   const [progress, setProgress] = React.useState(0);
   const [messageIndex, setMessageIndex] = React.useState(0);
   const [error, setError] = React.useState<string | null>(null);
@@ -56,6 +60,8 @@ export default function LoadingPage() {
 
   React.useEffect(() => {
     let cancelled = false;
+
+    if (getCompletedJourney()) return;
 
     const raw = sessionStorage.getItem('insuranceFormData');
     if (!raw) {
@@ -200,6 +206,8 @@ export default function LoadingPage() {
       clearInterval(messageTimer);
     };
   }, [router]);
+
+  if (journeyLocked) return <JourneyCompletedRedirect />;
 
   if (error) {
     const isUbbRefer = !!errorDetails?.ubbReferCodes;

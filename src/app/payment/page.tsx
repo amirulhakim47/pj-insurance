@@ -15,6 +15,9 @@ import { SENANGPAY_CONFIG, generateSenangPayHash } from '@/lib/senangpay';
 import { createStripeCheckoutSession } from '@/lib/stripe-checkout';
 import { ALLIANZ_DOCUMENTS, AGENT_DISPLAY_NAME } from '@/config/allianz-documents';
 import { formatCoverageDate } from '@/lib/date-format';
+import { getCompletedJourney } from '@/lib/insurance-session';
+import { useCompletedJourneyGuard } from '@/hooks/useCompletedJourneyGuard';
+import { JourneyCompletedRedirect } from '@/components/JourneyCompletedRedirect';
 
 const STEPS = ['Vehicle Details', 'Quotation', 'Customer Info', 'Review & Pay'];
 
@@ -35,6 +38,7 @@ interface CustomerDetails {
 
 export default function PaymentPage() {
   const router = useRouter();
+  const journeyLocked = useCompletedJourneyGuard();
   const [quotation, setQuotation] = React.useState<QuotationResponse | null>(null);
   const [vehicleDetails, setVehicleDetails] = React.useState<VehicleDetailsResponse | null>(null);
   const [formData, setFormData] = React.useState<InsuranceFormData | null>(null);
@@ -47,6 +51,7 @@ export default function PaymentPage() {
   const [driverPlanCost, setDriverPlanCost] = React.useState(0);
 
   React.useEffect(() => {
+    if (getCompletedJourney()) return;
     const storedQuotation = sessionStorage.getItem('allianz_quotation');
     const storedVehicle = sessionStorage.getItem('allianz_vehicleDetails');
     const storedFormData = sessionStorage.getItem('insuranceFormData');
@@ -79,6 +84,10 @@ export default function PaymentPage() {
 
   const handlePayment = async () => {
     if (!quotation || !formData || !pdsAcknowledged) return;
+    if (getCompletedJourney()) {
+      router.replace('/thank-you');
+      return;
+    }
     setIsProcessing(true);
     setError(null);
     sessionStorage.setItem('allianz_marketingConsent', marketingConsent ? 'Y' : 'N');
@@ -135,6 +144,7 @@ export default function PaymentPage() {
     }
   };
 
+  if (journeyLocked) return <JourneyCompletedRedirect />;
   if (!quotation || !formData) return null;
   const premium = quotation.premium;
   const useStripe = isStripePayment();
