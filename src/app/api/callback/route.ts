@@ -4,8 +4,10 @@ import {
   storePolicyMetadata,
   type PolicyMetadata,
 } from '@/lib/server/policy-storage';
-import { assertSafeContractNumber } from '@/lib/server/contract-number';
+import { extractCallbackFields, topLevelKeys } from '@/lib/server/callback-payload';
+import { storeUnmatchedCallback } from '@/lib/server/callback-unmatched';
 import { secureCompare } from '@/lib/server/secure-compare';
+import { recordCallbackAudit, type CallbackAuditEntry } from '@/lib/server/callback-audit';
 
 function getAllowedIPs(): string[] {
   return (process.env.CALLBACK_ALLOWED_IPS || '')
@@ -45,14 +47,6 @@ function verifySourceIP(req: NextRequest): boolean {
   return allowedIPs.some((allowed) => sourceIP === allowed);
 }
 
-interface CallbackPayload {
-  contractNumber: string;
-  policyNumber?: string;
-  status: 'SUCCESS' | 'FAILED';
-  policyPdf?: string;
-  vehicleLicenseId?: string;
-}
-
 /**
  * Model B callback handler — Allianz sends policy PDF in callback payload
  * and also emails the customer directly.
@@ -67,6 +61,24 @@ export async function POST(req: NextRequest) {
   try {
     const clientIP = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
 
+    const respond = async (
+      outcome: CallbackAuditEntry['outcome'],
+      body: object,
+      httpStatus: number,
+      extra: Partial<CallbackAuditEntry> = {},
+    ) => {
+      await recordCallbackAudit({
+        outcome,
+        httpStatus,
+        ip: clientIP,
+        userAgent: req.headers.get('user-agent'),
+        contentType: req.headers.get('content-type'),
+        apiKeyPresent: Boolean(req.headers.get('x-api-key')),
+        ...extra,
+      });
+      return NextResponse.json(body, { status: httpStatus });
+    };
+
     console.log('[Allianz Callback] Incoming request:', {
       ip: clientIP,
       headers: {
@@ -78,29 +90,46 @@ export async function POST(req: NextRequest) {
 
     if (!verifySourceIP(req)) {
       console.warn('[Allianz Callback] BLOCKED — IP not in whitelist:', clientIP);
-      return NextResponse.json({ received: false, error: 'Forbidden' }, { status: 403 });
+      return respond('blocked_ip', { received: false, error: 'Forbidden' }, 403);
     }
 
     if (!verifyApiKey(req)) {
       console.warn('[Allianz Callback] BLOCKED — Invalid x-api-key from:', clientIP);
-      return NextResponse.json({ received: false, error: 'Unauthorized' }, { status: 401 });
+      return respond('unauthorized', { received: false, error: 'Unauthorized' }, 401);
     }
 
-    const body: CallbackPayload = await req.json();
-    const { contractNumber, policyNumber, status, policyPdf, vehicleLicenseId } = body;
+    // Read as text first so a body we cannot use is still kept for reprocessing.
+    const rawText = await req.text();
+    let body: unknown;
+    try {
+      body = JSON.parse(rawText);
+    } catch {
+      await storeUnmatchedCallback({ reason: 'invalid_json', rawText, ip: clientIP });
+      console.warn('[Allianz Callback] REJECTED — body is not valid JSON (raw body kept in callback-unmatched)');
+      return respond('invalid_json', { received: false, error: 'Invalid JSON' }, 400);
+    }
+
+    const { contractNumber, policyNumber, status, policyPdf, vehicleLicenseId } = extractCallbackFields(body);
 
     if (!contractNumber) {
-      console.warn('[Allianz Callback] REJECTED — Missing contractNumber');
-      return NextResponse.json({ received: false, error: 'contractNumber is required' }, { status: 400 });
+      // Authenticated but no recognisable contract reference (e.g. Allianz renamed a field):
+      // acknowledge and keep the payload instead of rejecting it.
+      const keys = topLevelKeys(body);
+      await storeUnmatchedCallback({ reason: 'no_usable_reference', rawText, body, ip: clientIP });
+      console.error('[Allianz Callback] UNMATCHED — no usable contract reference. Payload kept in callback-unmatched.', {
+        keys,
+        policyNumber,
+        hasPdf: !!policyPdf,
+      });
+      return respond(
+        'unmatched',
+        { received: true, matched: false, pdfStored: false, timestamp: new Date().toISOString() },
+        200,
+        { policyNumber: policyNumber || null, hasPdf: !!policyPdf, payloadKeys: keys },
+      );
     }
 
-    let safeContractNumber: string;
-    try {
-      safeContractNumber = assertSafeContractNumber(contractNumber);
-    } catch {
-      console.warn('[Allianz Callback] REJECTED — Invalid contractNumber format');
-      return NextResponse.json({ received: false, error: 'Invalid contractNumber' }, { status: 400 });
-    }
+    const safeContractNumber = contractNumber;
 
     console.log('[Allianz Callback] ACCEPTED:', {
       contractNumber,
@@ -112,12 +141,13 @@ export async function POST(req: NextRequest) {
     });
 
     // ── Store PDF to filesystem (Model B) ────────────────────────
+    const receivedAt = new Date().toISOString();
     let pdfStored = false;
     let pdfPath: string | null = null;
 
     if (status === 'SUCCESS' && policyPdf) {
       try {
-        pdfPath = await storePolicyPdf(safeContractNumber, policyPdf);
+        pdfPath = await storePolicyPdf(safeContractNumber, policyPdf, receivedAt);
         pdfStored = true;
         console.log(`[Allianz Callback] PDF stored: ${pdfPath}`);
       } catch (storageErr) {
@@ -132,12 +162,21 @@ export async function POST(req: NextRequest) {
       status,
       vehicleLicenseId: vehicleLicenseId || null,
       pdfPath,
-      receivedAt: new Date().toISOString(),
+      receivedAt,
     };
 
     try {
-      await storePolicyMetadata(metadata);
-      console.log(`[Allianz Callback] Metadata stored for contract ${contractNumber}`);
+      const { stored, previous } = await storePolicyMetadata(metadata);
+      console.log(
+        `[Allianz Callback] Metadata stored for contract ${contractNumber} (callback #${stored.history.length})`,
+      );
+      if (previous && previous.policyNumber !== metadata.policyNumber) {
+        console.warn(
+          `[Allianz Callback] POLICY NUMBER CHANGED for contract ${contractNumber}: ` +
+            `${previous.policyNumber ?? 'none'} (${previous.receivedAt}) -> ${metadata.policyNumber ?? 'none'}. ` +
+            'Both kept in policy history.',
+        );
+      }
     } catch (metaErr) {
       console.error('[Allianz Callback] Metadata storage failed:', metaErr);
     }
@@ -148,13 +187,23 @@ export async function POST(req: NextRequest) {
       console.error(`[Allianz Callback] Policy issuance FAILED for contract ${contractNumber}`);
     }
 
-    return NextResponse.json({
-      received: true,
-      pdfStored,
-      timestamp: new Date().toISOString(),
-    });
+    return respond(
+      'accepted',
+      { received: true, pdfStored, timestamp: new Date().toISOString() },
+      200,
+      { contractNumber: safeContractNumber, policyNumber: policyNumber || null, status, hasPdf: !!policyPdf },
+    );
   } catch (err) {
     console.error('[Allianz Callback] Processing error:', err);
+    await recordCallbackAudit({
+      outcome: 'error',
+      httpStatus: 500,
+      ip: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown',
+      userAgent: req.headers.get('user-agent'),
+      contentType: req.headers.get('content-type'),
+      apiKeyPresent: Boolean(req.headers.get('x-api-key')),
+      error: err instanceof Error ? err.message : String(err),
+    });
     return NextResponse.json({ received: false, error: 'Internal processing error' }, { status: 500 });
   }
 }
