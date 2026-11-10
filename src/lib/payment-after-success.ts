@@ -37,6 +37,17 @@ async function submitWithRetry(
   throw new Error('Max retries exceeded');
 }
 
+/** NVIC for the submission payload: stored selection, else the vehicleDetails recommended/only variant. */
+export function resolveNvicCode(
+  selectedNvic: NvicItem | null,
+  vehicleDetails: VehicleDetailsResponse | null,
+): string {
+  if (selectedNvic?.nvic) return selectedNvic.nvic;
+  const list = vehicleDetails?.nvicList ?? [];
+  const fallback = list.find((n) => n.recommendInd === 'Y') ?? (list.length === 1 ? list[0] : undefined);
+  return fallback?.nvic ?? '';
+}
+
 /** After payment is verified, submit policy to Allianz (non-blocking errors logged by caller). */
 export async function submitAllianzAfterPayment(
   paymentOrderId: string,
@@ -135,7 +146,7 @@ export async function submitAllianzAfterPayment(
       addressLine3,
     },
     vehicle: {
-      nvicCode: selectedNvic?.nvic || '',
+      nvicCode: resolveNvicCode(selectedNvic, vehicleDetails),
       vehicleEngineCC: vehicleDetails?.vehicleEngineCC || '',
       yearOfManufacture: vehicleDetails?.yearOfManufacture || '',
       occupantsNumber: vehicleDetails?.seatingCapacity || 5,

@@ -263,10 +263,14 @@ function ResultsPage() {
     fetchAvVariants();
   }, [vehicleDetails, isDemo]);
 
+  // Persist every selection, including the auto-selected recommended variant, for the submission payload.
+  React.useEffect(() => {
+    if (selectedNvic) sessionStorage.setItem('allianz_selectedNvic', JSON.stringify(selectedNvic));
+  }, [selectedNvic]);
+
   const handleNvicSelect = (nvic: NvicItem) => {
     setSelectedNvic(nvic);
     setQuotation(null);
-    sessionStorage.setItem('allianz_selectedNvic', JSON.stringify(nvic));
   };
 
   const handleGenerateQuote = async () => {
